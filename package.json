@@ -2,6 +2,19 @@
   "name": "daosys_frontend",
   "version": "0.1.0",
   "private": true,
+  "bin": {
+    "daosys-frontend": "bin/cli.js"
+  },
+  "files": [
+    "app",
+    "public",
+    "next.config.js",
+    "package.json",
+    "bin",
+    "src",
+    "hooks",
+    "components"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -33,6 +46,7 @@
     "typescript": "5.1.6",
     "uuid": "^9.0.0",
     "viem": "^1.4.1",
+    "toml": "^3.0.0",
     "wagmi": "^1.3.9"
   },
   "devDependencies": {

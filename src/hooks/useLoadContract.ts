@@ -6,6 +6,7 @@ import { GetContractReturnType, isAddress } from "viem";
 import { getContract } from "viem";
 import { useAppDispatch } from "@/store/hooks";
 import { addContract } from "@/store/features/contracts/contractsSlice";
+import { getLocalAbi } from '@/hooks/useLocalAbis';
 
 export type ContractLoadingState =
     'none' |
@@ -90,6 +91,25 @@ export const useLoadContract = (
     }, [wallet]);
 
 
+    const loadLocalAbi = useCallback(async (contractAddress: string, name: string) => {
+        try {
+            setLoadingState('loading-abi');
+            const json = await getLocalAbi(name);
+            if (!json || !json.abi) {
+                setLoadingState('metadata-not-found');
+                return false;
+            }
+            // abi should be an array
+            await loadContract(contractAddress, json.abi as unknown as string);
+            return true;
+        } catch (e) {
+            console.error(e);
+            setLoadingState('abi-error');
+            return false;
+        }
+    }, [loadContract]);
+
+
     const loadContractMetadata = useCallback(async (metadataSource: MetadataSources, chainId: number) => {
 
         const metadataFetchPayload = {
@@ -134,6 +154,7 @@ export const useLoadContract = (
         loadingState,
         loadContractMetadata,
         loadContract,
+        loadLocalAbi,
         contract,
         resetState: () => {
             setLoadingState('none');
