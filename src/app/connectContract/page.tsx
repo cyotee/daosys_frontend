@@ -211,7 +211,7 @@ const Page: NextPage = () => {
                                 </Box>
                             </Grid>
                         )}
-                        {proxyInfo.implementationAddress && proxyInfo.proxyType !== 'EIP-2535' && (
+                        {proxyInfo.implementationAddress && proxyInfo.proxyType !== 'EIP-2535' && proxyInfo.proxyType !== 'ERC-8109' && (
                             <Grid item xs={12} sx={{ mt: 1 }}>
                                 <Button
                                     size="small"

@@ -235,23 +235,24 @@ From `docs/POC.md`:
 | **EIP-1822** | Storage slot | UUPS (older standard) |
 | **EIP-897** | Function call + bytecode check | Delegate Proxy via `implementation()` |
 | **GnosisSafe** | Function call or slot 0 | Gnosis Safe Proxy via `masterCopy()` or slot 0 |
-| **EIP-2535** | Function call | Diamond Proxy via `facetAddresses()` or `facets()` |
+| **ERC-8109** | Function call | Diamond Proxy (Simplified) via `functionFacetPairs()` |
+| **EIP-2535** | Function call | Diamond Proxy (Original) via `facetAddresses()` or `facets()` |
 | **Compound** | Function call | Compound-style via `comptrollerImplementation()` |
 
 ### Features Implemented
 
 - Automatic proxy detection when valid address is entered
 - Displays proxy type, implementation address, beacon address (if applicable), admin address
-- Diamond proxy: displays all facet addresses in scrollable list
+- Diamond proxies (ERC-8109 and EIP-2535): displays all facet addresses in scrollable list
 - "Load Implementation Contract" button to switch to implementation address (non-Diamond proxies)
 - Non-proxy contracts show success message
 - Detection state indicator (detecting/detected/error)
 
 ### Test Results
 
-- `proxyDetection.test.ts`: 23 tests
+- `proxyDetection.test.ts`: 27 tests
 - `useProxyDetection.test.ts`: 11 tests
-- **Total new tests**: 34 tests (131 total across all suites)
+- **Total new tests**: 38 tests (135 total across all suites)
 
 ---
 

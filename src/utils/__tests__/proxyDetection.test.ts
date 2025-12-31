@@ -192,6 +192,69 @@ describe('proxyDetection', () => {
 
     // New proxy type tests
 
+    it('should detect ERC-8109 Diamond proxy via functionFacetPairs()', async () => {
+      const mockClient = createMockClient({}, ({ functionName }) => {
+        if (functionName === 'functionFacetPairs') {
+          return Promise.resolve([
+            { functionSelector: '0x12345678', facetAddress: FACET_ADDRESS_1 },
+            { functionSelector: '0xabcdef12', facetAddress: FACET_ADDRESS_1 },
+            { functionSelector: '0x87654321', facetAddress: FACET_ADDRESS_2 },
+          ]);
+        }
+        throw new Error('Not mocked');
+      });
+
+      const result = await detectProxy(mockClient, TEST_ADDRESS);
+
+      expect(result.isProxy).toBe(true);
+      expect(result.proxyType).toBe('ERC-8109');
+      // Should have unique facet addresses (2, not 3)
+      expect(result.facetAddresses).toHaveLength(2);
+      expect(result.facetAddresses).toContain(FACET_ADDRESS_1);
+      expect(result.facetAddresses).toContain(FACET_ADDRESS_2);
+      expect(result.implementationAddress).toBe(FACET_ADDRESS_1);
+    });
+
+    it('should prioritize ERC-8109 over EIP-2535 when both are present', async () => {
+      const mockClient = createMockClient({}, ({ functionName }) => {
+        // Both functionFacetPairs (ERC-8109) and facetAddresses (EIP-2535) exist
+        if (functionName === 'functionFacetPairs') {
+          return Promise.resolve([
+            { functionSelector: '0x12345678', facetAddress: FACET_ADDRESS_1 },
+          ]);
+        }
+        if (functionName === 'facetAddresses') {
+          return Promise.resolve([FACET_ADDRESS_2]);
+        }
+        throw new Error('Not mocked');
+      });
+
+      const result = await detectProxy(mockClient, TEST_ADDRESS);
+
+      expect(result.isProxy).toBe(true);
+      expect(result.proxyType).toBe('ERC-8109'); // ERC-8109 should be detected first
+      expect(result.facetAddresses).toContain(FACET_ADDRESS_1);
+    });
+
+    it('should fall back to EIP-2535 when ERC-8109 is not supported', async () => {
+      const mockClient = createMockClient({}, ({ functionName }) => {
+        // functionFacetPairs fails (not ERC-8109), but facetAddresses works (EIP-2535)
+        if (functionName === 'functionFacetPairs') {
+          throw new Error('Not implemented');
+        }
+        if (functionName === 'facetAddresses') {
+          return Promise.resolve([FACET_ADDRESS_1, FACET_ADDRESS_2]);
+        }
+        throw new Error('Not mocked');
+      });
+
+      const result = await detectProxy(mockClient, TEST_ADDRESS);
+
+      expect(result.isProxy).toBe(true);
+      expect(result.proxyType).toBe('EIP-2535');
+      expect(result.facetAddresses).toEqual([FACET_ADDRESS_1, FACET_ADDRESS_2]);
+    });
+
     it('should detect EIP-2535 Diamond proxy via facetAddresses()', async () => {
       const mockClient = createMockClient({}, ({ functionName }) => {
         if (functionName === 'facetAddresses') {
@@ -343,6 +406,10 @@ describe('proxyDetection', () => {
 
     it('should return correct label for GnosisSafe', () => {
       expect(getProxyTypeLabel('GnosisSafe')).toBe('Gnosis Safe Proxy');
+    });
+
+    it('should return correct label for ERC-8109', () => {
+      expect(getProxyTypeLabel('ERC-8109')).toBe('Diamond Proxy (ERC-8109 Simplified)');
     });
 
     it('should return correct label for EIP-2535', () => {

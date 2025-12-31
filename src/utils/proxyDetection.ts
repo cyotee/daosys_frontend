@@ -8,7 +8,8 @@ export type ProxyType =
   | 'EIP-1822'        // UUPS (older standard)
   | 'EIP-897'         // DelegateProxy (function-based)
   | 'GnosisSafe'      // Gnosis Safe Proxy
-  | 'EIP-2535'        // Diamond Proxy
+  | 'ERC-8109'        // Diamond Proxy (Simplified) - check before EIP-2535
+  | 'EIP-2535'        // Diamond Proxy (Original)
   | 'Compound'        // Compound-style Proxy
   | 'none';
 
@@ -159,6 +160,20 @@ export async function detectProxy(
       }
     }
 
+    // Check ERC-8109 Diamond Proxy first (Simplified Diamond - newer standard)
+    // ERC-8109 uses functionFacetPairs() instead of facetAddresses()
+    const erc8109Result = await detectERC8109Diamond(client, address);
+    if (erc8109Result) {
+      result.isProxy = true;
+      result.proxyType = 'ERC-8109';
+      result.facetAddresses = erc8109Result.facets;
+      // Diamond proxies don't have a single implementation, but we can set the first facet
+      if (erc8109Result.facets.length > 0) {
+        result.implementationAddress = erc8109Result.facets[0];
+      }
+      return result;
+    }
+
     // Check EIP-2535 Diamond Proxy (via facetAddresses() function)
     const diamondResult = await detectDiamondProxy(client, address);
     if (diamondResult) {
@@ -306,6 +321,54 @@ async function detectGnosisSafeProxy(
     }
   } catch {
     // Not a GnosisSafe proxy
+  }
+
+  return null;
+}
+
+/**
+ * Detect ERC-8109 Diamond Proxy (Simplified) via functionFacetPairs() function
+ * ERC-8109 uses a simplified introspection interface compared to EIP-2535
+ * https://eips.ethereum.org/EIPS/eip-8109
+ */
+async function detectERC8109Diamond(
+  client: PublicClient,
+  address: Address
+): Promise<{ facets: Address[] } | null> {
+  try {
+    // ERC-8109 specific: functionFacetPairs() returns array of {functionSelector, facetAddress}
+    const pairs = await client.readContract({
+      address,
+      abi: [{
+        name: 'functionFacetPairs',
+        type: 'function',
+        inputs: [],
+        outputs: [{
+          type: 'tuple[]',
+          components: [
+            { name: 'functionSelector', type: 'bytes4' },
+            { name: 'facetAddress', type: 'address' }
+          ]
+        }],
+        stateMutability: 'view',
+      }],
+      functionName: 'functionFacetPairs',
+    });
+
+    // Handle the response - extract unique facet addresses
+    if (pairs && Array.isArray(pairs) && pairs.length > 0) {
+      const facetSet = new Set<string>();
+      for (const pair of pairs) {
+        if (pair && pair.facetAddress) {
+          facetSet.add(pair.facetAddress as string);
+        }
+      }
+      if (facetSet.size > 0) {
+        return { facets: Array.from(facetSet) as Address[] };
+      }
+    }
+  } catch {
+    // Not an ERC-8109 Diamond
   }
 
   return null;
@@ -487,6 +550,8 @@ export function getProxyTypeLabel(proxyType: ProxyType): string {
       return 'Delegate Proxy (EIP-897)';
     case 'GnosisSafe':
       return 'Gnosis Safe Proxy';
+    case 'ERC-8109':
+      return 'Diamond Proxy (ERC-8109 Simplified)';
     case 'EIP-2535':
       return 'Diamond Proxy (EIP-2535)';
     case 'Compound':
