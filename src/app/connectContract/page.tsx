@@ -3,6 +3,7 @@
 import Box from '@/components/Box';
 import Button from '@/components/Button';
 import Select from '@/components/Select';
+import { useNotification } from '@/components/Notifications';
 import { useLoadContract } from '@/hooks/useLoadContract';
 import { useLocalAbis } from '@/hooks/useLocalAbis';
 import { getDeploymentMode, getDeploymentModeLabel } from '@/utils/deploymentMode';
@@ -19,6 +20,7 @@ const Page: NextPage = () => {
     const [chainId, setChainId] = useState<number>(0)
     const [manualAbi, setManualAbi] = useState<string>('')
     const [contractName, setContractName] = useState<string | undefined>(undefined);
+    const { notifySuccess, notifyError, notifyWarning } = useNotification();
     const {
         loadContractMetadata,
         loadingState,
@@ -51,14 +53,40 @@ const Page: NextPage = () => {
 
     const [metadataSource, setMetadataSource] = useState<number | string>('');
     const deploymentMode = getDeploymentMode();
+    const [prevLoadingState, setPrevLoadingState] = useState(loadingState);
+
+    // Watch for loading state changes to show notifications
+    useEffect(() => {
+        if (prevLoadingState !== loadingState) {
+            if (loadingState === 'metadata-not-found' && prevLoadingState === 'loading-metadata') {
+                notifyWarning('Metadata not found. You can paste the ABI manually.');
+            } else if (loadingState === 'contract-loaded' && prevLoadingState !== 'contract-loaded') {
+                // Only notify if we didn't already notify (from handleLoad/handleLoadLocal)
+                if (prevLoadingState === 'loading-abi' || prevLoadingState === 'loading-contract') {
+                    notifySuccess('Contract loaded successfully!');
+                }
+            } else if (loadingState === 'contract-error') {
+                notifyError('Failed to load contract. Please try again.');
+            } else if (loadingState === 'abi-error') {
+                notifyError('Failed to load ABI. Please check the contract name.');
+            }
+            setPrevLoadingState(loadingState);
+        }
+    }, [loadingState, prevLoadingState, notifySuccess, notifyError, notifyWarning]);
 
     const handleLoad = async () => {
         if (loadingState === 'metadata-not-found') {
             try {
                 const parsedAbi = JSON.parse(manualAbi) as Abi;
-                await loadContract(address, parsedAbi);
+                const result = await loadContract(address, parsedAbi);
+                if (result) {
+                    notifySuccess('Contract loaded successfully!');
+                } else {
+                    notifyError('Failed to load contract');
+                }
             } catch (e) {
                 console.error('Invalid ABI JSON:', e);
+                notifyError('Invalid ABI JSON format. Please check your input.');
             }
         } else {
             await loadContractMetadata(metadataSource as unknown as MetadataSources, chainId);
@@ -67,7 +95,12 @@ const Page: NextPage = () => {
 
     const handleLoadLocal = async () => {
         if (!localSelectedName) return;
-        await loadLocalAbi(address, localSelectedName);
+        const result = await loadLocalAbi(address, localSelectedName);
+        if (result) {
+            notifySuccess(`Loaded ${localSelectedName} successfully!`);
+        } else {
+            notifyError(`Failed to load ${localSelectedName}. Check if the ABI exists.`);
+        }
     }
 
     return (<>

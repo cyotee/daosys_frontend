@@ -10,7 +10,7 @@ This plan covers quality improvements for the DaoSYS Frontend to make it product
 |---|-------------|----------|--------|--------|
 | 1 | Add tests for hooks and utilities | High | Medium | **COMPLETED** |
 | 2 | Fix TypeScript types in useLoadContract | High | Low | **COMPLETED** |
-| 3 | Add error notifications | Medium | Low | Pending |
+| 3 | Add error notifications | Medium | Low | **COMPLETED** |
 | 4 | Add loading skeletons | Low | Low | Pending |
 | 5 | Implement proxy contract detection | Low | Medium | Pending |
 | 6 | Implement IPFS collection export/import | Low | Medium | Pending |
@@ -112,53 +112,44 @@ const loadContract = useCallback(async (addressToLoad: string, abi: Abi) => {
 
 ---
 
-## 3. Add Error Notifications
+## 3. Add Error Notifications - COMPLETED
 
 **Priority**: Medium
 **Effort**: Low
-**Status**: Pending
+**Status**: Completed
 
-### Current Problem
+### Files Created
 
-Errors are logged to console but users don't see them:
-```typescript
-} catch (e) {
-    console.log(e);
-    setLoadingState('metadata-not-found');
-}
-```
+| File | Purpose |
+|------|---------|
+| `src/components/Notifications/NotificationContext.tsx` | Context provider with Snackbar/Alert UI |
+| `src/components/Notifications/index.ts` | Export barrel file |
 
-### Solution
+### Files Modified
 
-Add a toast/snackbar notification system using MUI.
+| File | Changes |
+|------|---------|
+| `src/app/providers.tsx` | Wrapped app with NotificationProvider |
+| `src/app/connectContract/page.tsx` | Added notifications for all loading states |
 
-### Files to Create/Modify
+### Features Implemented
 
-| File | Action |
-|------|--------|
-| `src/components/Notifications/NotificationProvider.tsx` | CREATE - Context for notifications |
-| `src/components/Notifications/useNotification.ts` | CREATE - Hook to show notifications |
-| `src/app/providers.tsx` | MODIFY - Wrap with NotificationProvider |
-| `src/hooks/useLoadContract.ts` | MODIFY - Show error notifications |
-| `src/app/connectContract/page.tsx` | MODIFY - Show error notifications |
+- **Success notifications**: Contract loaded successfully
+- **Error notifications**: Failed to load contract, invalid ABI JSON
+- **Warning notifications**: Metadata not found (prompts manual ABI entry)
+- **Auto-hide**: 6 seconds for info/success/warning, 10 seconds for errors
+- **Queue system**: Notifications display one at a time
 
-### Implementation
+### Usage
 
 ```typescript
-// useNotification.ts
-export function useNotification() {
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState('');
-  const [severity, setSeverity] = useState<'error' | 'warning' | 'info' | 'success'>('info');
+import { useNotification } from '@/components/Notifications';
 
-  const notify = (msg: string, sev: typeof severity = 'info') => {
-    setMessage(msg);
-    setSeverity(sev);
-    setOpen(true);
-  };
+const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotification();
 
-  return { notify, notifyError: (msg) => notify(msg, 'error'), ... };
-}
+notifySuccess('Contract loaded!');
+notifyError('Failed to load contract');
+notifyWarning('Metadata not found');
 ```
 
 ---
@@ -296,8 +287,8 @@ Wagmi 2.x migration requires:
 
 1. ~~**Fix TypeScript types**~~ - DONE
 2. ~~**Add tests**~~ - DONE (93 tests passing)
-3. **Add error notifications** - Better UX (next priority)
-4. **Add loading skeletons** - Polish
+3. ~~**Add error notifications**~~ - DONE (toast notifications with MUI Snackbar)
+4. **Add loading skeletons** - Polish (next priority)
 5. **Proxy detection** - Feature from POC
 6. **IPFS export/import** - Feature from POC
 7. **Dependency updates** - Only when necessary (create separate branch)

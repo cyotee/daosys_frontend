@@ -66,13 +66,13 @@ function createTestStore() {
 function createWrapper() {
   const store = createTestStore();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return React.createElement(Provider, { store }, children);
+    return React.createElement(Provider, { store, children });
   };
 }
 
 const validAddress = '0x1234567890123456789012345678901234567890';
 const invalidAddress = 'invalid-address';
-const mockAbi = [{ type: 'function', name: 'test', inputs: [], outputs: [] }];
+const mockAbi = [{ type: 'function' as const, name: 'test', inputs: [], outputs: [], stateMutability: 'view' as const }];
 
 describe('useLoadContract', () => {
   beforeEach(() => {

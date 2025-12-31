@@ -17,6 +17,7 @@ import { rollux } from '@/networks/rollux';
 import store from '@/store';
 import { ThemeProvider } from '@mui/material';
 import theme from './theme';
+import { NotificationProvider } from '@/components/Notifications';
 
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
@@ -54,9 +55,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <Provider store={store}>
             <WagmiConfig config={wagmiConfig}>
                 <ThemeProvider theme={theme}>
-                    <RainbowKitProvider chains={chains} appInfo={demoAppInfo}>
-                        {mounted && children}
-                    </RainbowKitProvider>
+                    <NotificationProvider>
+                        <RainbowKitProvider chains={chains} appInfo={demoAppInfo}>
+                            {mounted && children}
+                        </RainbowKitProvider>
+                    </NotificationProvider>
                 </ThemeProvider>
             </WagmiConfig>
         </Provider>
