@@ -19,7 +19,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "bundle-abis": "node scripts/bundle-local-abis.js",
+    "watch-abis": "node scripts/watch-abis.js",
+    "export": "STATIC_EXPORT=true next build",
+    "dev:local": "node bin/cli.js --local dev",
+    "build:local": "node bin/cli.js --local build"
   },
   "dependencies": {
     "@emotion/react": "^11.11.1",

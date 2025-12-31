@@ -4,11 +4,12 @@ import Box from '@/components/Box';
 import Button from '@/components/Button';
 import Select from '@/components/Select';
 import { useLoadContract } from '@/hooks/useLoadContract';
-import { listLocalAbis } from '@/hooks/useLocalAbis';
+import { useLocalAbis } from '@/hooks/useLocalAbis';
+import { getDeploymentMode, getDeploymentModeLabel } from '@/utils/deploymentMode';
 import { MetadataSources } from '@ethereum-sourcify/contract-call-decoder';
-import { Badge, Chip, FormControl, Grid, Input, InputLabel, MenuItem, TextField, TextareaAutosize, Typography } from '@mui/material';
+import { Chip, FormControl, Grid, InputLabel, MenuItem, TextField, Typography, Alert, Divider } from '@mui/material';
 import { NextPage } from 'next';
-import React, { FC, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { usePublicClient } from 'wagmi';
 
 
@@ -27,6 +28,17 @@ const Page: NextPage = () => {
 
     const client = usePublicClient();
 
+    // Local ABIs hook
+    const {
+        hasAbis: hasLocalAbis,
+        contractNames: localAbiNames,
+        loading: localAbisLoading,
+        projectType,
+        projectDir
+    } = useLocalAbis();
+
+    const [localSelectedName, setLocalSelectedName] = useState<string | undefined>(undefined);
+
     useEffect(() => {
         const getChainId = async () => {
             const chainId = await client.getChainId();
@@ -37,40 +49,15 @@ const Page: NextPage = () => {
     }, [client]);
 
     const [metadataSource, setMetadataSource] = useState<number | string>('');
-
-    // local ABI listing
-    const [localAbiNames, setLocalAbiNames] = useState<string[]>([]);
-    const [localListLoading, setLocalListLoading] = useState(false);
-    const [localListError, setLocalListError] = useState<string | null>(null);
-    const [localSelectedName, setLocalSelectedName] = useState<string | undefined>(undefined);
+    const deploymentMode = getDeploymentMode();
 
     const handleLoad = async () => {
         if (loadingState === 'metadata-not-found') {
-
             const finalAbiArr = Array.isArray(manualAbi) ? manualAbi : JSON.parse(manualAbi);
-
             loadContract(address, finalAbiArr);
         } else {
             loadContractMetadata(metadataSource as unknown as MetadataSources, chainId);
         }
-    }
-
-    const handleListLocal = async () => {
-        setLocalListError(null);
-        setLocalListLoading(true);
-        try {
-            const res = await listLocalAbis();
-            if (res && res.names) {
-                setLocalAbiNames(res.names as string[]);
-            } else if (res && res.artifacts) {
-                setLocalAbiNames((res.artifacts as any[]).map(a => a.name));
-            } else {
-                setLocalListError('No local ABIs found');
-            }
-        } catch (e: any) {
-            setLocalListError(e?.message || 'Failed to list local ABIs');
-        }
-        setLocalListLoading(false);
     }
 
     const handleLoadLocal = async () => {
@@ -78,15 +65,17 @@ const Page: NextPage = () => {
         await loadLocalAbi(address, localSelectedName);
     }
 
-
-
-
-
     return (<>
         <Box>
             <Typography variant='h5'>
                 Connect Contract - <Chip label={loadingState} />
             </Typography>
+            {deploymentMode === 'local' && (
+                <Typography variant='caption' color='text.secondary'>
+                    Mode: {getDeploymentModeLabel()}
+                    {projectType && ` | ${projectType.charAt(0).toUpperCase() + projectType.slice(1)} project`}
+                </Typography>
+            )}
         </Box>
 
         <Box mt={3}>
@@ -101,9 +90,61 @@ const Page: NextPage = () => {
                 />
             </FormControl>
 
+            {/* Local ABI Section - shown when local ABIs are available */}
+            {hasLocalAbis && (
+                <Box sx={{ mt: 3, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1 }}>
+                    <Typography variant='subtitle2' color='primary' gutterBottom>
+                        Local Artifacts ({localAbiNames.length} contracts)
+                    </Typography>
+                    <Grid container spacing={2} alignItems="center">
+                        <Grid item xs={12} sm={8}>
+                            <FormControl fullWidth>
+                                <InputLabel id="local-abi-label">Select Contract</InputLabel>
+                                <Select
+                                    labelId="local-abi-label"
+                                    id="local-abi-select"
+                                    value={localSelectedName || ''}
+                                    onChange={(e) => setLocalSelectedName(e.target.value as string)}
+                                    label="Select Contract"
+                                >
+                                    <MenuItem value="" disabled>Select a contract</MenuItem>
+                                    {localAbiNames.map((name) => (
+                                        <MenuItem key={name} value={name}>{name}</MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Grid>
+                        <Grid item xs={12} sm={4}>
+                            <Button
+                                neon
+                                fullWidth
+                                disabled={!localSelectedName || address === ''}
+                                onClick={handleLoadLocal}
+                            >
+                                Load Local ABI
+                            </Button>
+                        </Grid>
+                    </Grid>
+                </Box>
+            )}
+
+            {/* Loading state for local ABIs */}
+            {localAbisLoading && (
+                <Alert severity="info" sx={{ mt: 2 }}>
+                    Loading local contract artifacts...
+                </Alert>
+            )}
+
+            <Divider sx={{ my: 3 }} />
+
+            {/* On-chain metadata section */}
+            <Typography variant='subtitle2' color='text.secondary' gutterBottom>
+                Or load from on-chain metadata
+            </Typography>
+
             <Grid container spacing={2}>
                 <Grid xs={4} item>
-                    <FormControl fullWidth sx={{ mt: 3 }}>
+                    <FormControl fullWidth sx={{ mt: 1 }}>
                         <InputLabel id="metadata-source-label">Metadata source</InputLabel>
                         <Select fullWidth
                             labelId='metadata-source-label'
@@ -120,7 +161,7 @@ const Page: NextPage = () => {
                     </FormControl>
                 </Grid>
                 <Grid xs={4} item>
-                    <FormControl fullWidth sx={{ mt: 3 }}>
+                    <FormControl fullWidth sx={{ mt: 1 }}>
                         <TextField
                             onChange={(e) => setChainId(isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))}
                             value={chainId}
@@ -132,7 +173,7 @@ const Page: NextPage = () => {
                     </FormControl>
                 </Grid>
                 <Grid xs={4} item>
-                    <FormControl fullWidth sx={{ mt: 3 }}>
+                    <FormControl fullWidth sx={{ mt: 1 }}>
                         <TextField
                             onChange={(e) => setContractName(e.target.value.length > 0 ? e.target.value : undefined)}
                             value={contractName || ''}
@@ -147,10 +188,13 @@ const Page: NextPage = () => {
 
             {loadingState === 'metadata-not-found' &&
                 (<>
+                    <Alert severity="warning" sx={{ mt: 2 }}>
+                        Metadata not found. You can paste the ABI manually below.
+                    </Alert>
                     <TextField
                         multiline
                         rows={5}
-                        sx={{ mt: 3 }}
+                        sx={{ mt: 2 }}
                         id="outlined-basic"
                         label="Paste ABI"
                         variant="outlined"
@@ -162,54 +206,12 @@ const Page: NextPage = () => {
                 </>)
             }
 
-
-            {/* Local ABI loader UI */}
-            <Box sx={{ mt: 3 }}>
-                <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} sm={6}>
-                        <Button neon fullWidth onClick={handleListLocal} disabled={address === '' || localListLoading}>
-                            {localListLoading ? 'Listing...' : 'List Local ABIs'}
-                        </Button>
-                    </Grid>
-                    <Grid item xs={12} sm={6}>
-                        {localListError && <Typography color="error">{localListError}</Typography>}
-                    </Grid>
-
-                    {localAbiNames.length > 0 && (
-                        <>
-                            <Grid item xs={12} sm={8}>
-                                <FormControl fullWidth sx={{ mt: 1 }}>
-                                    <InputLabel id="local-abi-label">Local ABI</InputLabel>
-                                    <Select
-                                        labelId="local-abi-label"
-                                        id="local-abi-select"
-                                        value={localSelectedName || ''}
-                                        onChange={(e) => setLocalSelectedName(e.target.value as string)}
-                                        label="Local ABI"
-                                    >
-                                        <MenuItem value="" disabled>Select local ABI</MenuItem>
-                                        {localAbiNames.map((name) => (
-                                            <MenuItem key={name} value={name}>{name}</MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Grid>
-                            <Grid item xs={12} sm={4}>
-                                <Button neon fullWidth sx={{ mt: 1 }} disabled={!localSelectedName || address === ''} onClick={handleLoadLocal}>
-                                    Load Local ABI
-                                </Button>
-                            </Grid>
-                        </>
-                    )}
-                </Grid>
-            </Box>
-
             {loadingState !== 'contract-loaded' && <>
                 <Button neon fullWidth sx={{ mt: 3, background: 'primary.main', color: 'white' }}
                     disabled={address === ''}
                     onClick={handleLoad}
                 >
-                    {(loadingState === 'none' || loadingState === 'invalid-address') ? 'Connect' :
+                    {(loadingState === 'none' || loadingState === 'invalid-address') ? 'Connect via Metadata' :
                         loadingState === 'metadata-not-found' ? 'Load ABI' : 'Loading...'
                     }
                 </Button>
@@ -217,12 +219,9 @@ const Page: NextPage = () => {
 
 
             {loadingState === 'contract-loaded' && <>
-                <Typography variant='h5' sx={{ mt: 3 }}>
-                    Contract loaded
-                </Typography>
-                <Typography variant='body1' sx={{ mt: 3 }}>
-                    You can use it in the workspace.
-                </Typography>
+                <Alert severity="success" sx={{ mt: 3 }}>
+                    Contract loaded successfully! You can use it in the workspace.
+                </Alert>
 
                 <Button neon fullWidth sx={{ mt: 3, background: 'primary.main', color: 'white' }}
                     onClick={async () => {
@@ -231,6 +230,7 @@ const Page: NextPage = () => {
                         setChainId(await client.getChainId() ?? 1);
                         setManualAbi('');
                         setContractName(undefined);
+                        setLocalSelectedName(undefined);
                         resetState();
                     }}
                 >
