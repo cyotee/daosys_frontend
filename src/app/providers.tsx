@@ -9,6 +9,7 @@ import {
 import { configureChains, createConfig, mainnet, WagmiConfig } from 'wagmi';
 import {
     goerli,
+    foundry,
 } from 'wagmi/chains';
 import { publicProvider } from 'wagmi/providers/public';
 import { injectedWallet } from '@rainbow-me/rainbowkit/wallets';
@@ -22,6 +23,7 @@ import { NotificationProvider } from '@/components/Notifications';
 
 const { chains, publicClient, webSocketPublicClient } = configureChains(
     [
+        foundry,  // Anvil/localhost (chain ID 31337) - first for dev priority
         rollux,
         mainnet,
         ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [goerli] : []),
