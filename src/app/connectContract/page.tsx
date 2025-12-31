@@ -8,6 +8,7 @@ import { useLocalAbis } from '@/hooks/useLocalAbis';
 import { getDeploymentMode, getDeploymentModeLabel } from '@/utils/deploymentMode';
 import { MetadataSources } from '@ethereum-sourcify/contract-call-decoder';
 import { Chip, FormControl, Grid, InputLabel, MenuItem, TextField, Typography, Alert, Divider } from '@mui/material';
+import type { Abi } from 'viem';
 import { NextPage } from 'next';
 import React, { useEffect, useState } from 'react';
 import { usePublicClient } from 'wagmi';
@@ -53,10 +54,14 @@ const Page: NextPage = () => {
 
     const handleLoad = async () => {
         if (loadingState === 'metadata-not-found') {
-            const finalAbiArr = Array.isArray(manualAbi) ? manualAbi : JSON.parse(manualAbi);
-            loadContract(address, finalAbiArr);
+            try {
+                const parsedAbi = JSON.parse(manualAbi) as Abi;
+                await loadContract(address, parsedAbi);
+            } catch (e) {
+                console.error('Invalid ABI JSON:', e);
+            }
         } else {
-            loadContractMetadata(metadataSource as unknown as MetadataSources, chainId);
+            await loadContractMetadata(metadataSource as unknown as MetadataSources, chainId);
         }
     }
 

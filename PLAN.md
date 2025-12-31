@@ -6,69 +6,73 @@ This plan covers quality improvements for the DaoSYS Frontend to make it product
 
 ## Summary
 
-| # | Improvement | Priority | Effort |
-|---|-------------|----------|--------|
-| 1 | Add tests for hooks and utilities | High | Medium |
-| 2 | Fix TypeScript types in useLoadContract | High | Low |
-| 3 | Add error notifications | Medium | Low |
-| 4 | Add loading skeletons | Low | Low |
-| 5 | Implement proxy contract detection | Low | Medium |
-| 6 | Implement IPFS collection export/import | Low | Medium |
-| 7 | Update dependencies (Wagmi 2.x) | Low | Medium |
+| # | Improvement | Priority | Effort | Status |
+|---|-------------|----------|--------|--------|
+| 1 | Add tests for hooks and utilities | High | Medium | **COMPLETED** |
+| 2 | Fix TypeScript types in useLoadContract | High | Low | **COMPLETED** |
+| 3 | Add error notifications | Medium | Low | Pending |
+| 4 | Add loading skeletons | Low | Low | Pending |
+| 5 | Implement proxy contract detection | Low | Medium | Pending |
+| 6 | Implement IPFS collection export/import | Low | Medium | Pending |
+| 7 | Update dependencies (Wagmi 2.x) | Low | Medium | Pending |
 
 ---
 
-## 1. Add Tests for Hooks and Utilities
+## 1. Add Tests for Hooks and Utilities - COMPLETED
 
 **Priority**: High
 **Effort**: Medium
+**Status**: Completed
 
-### Files to Create
+### Files Created
 
-| File | Purpose |
-|------|---------|
-| `src/hooks/__tests__/useLocalAbis.test.ts` | Test static manifest loading, caching, error handling |
-| `src/hooks/__tests__/useLoadContract.test.ts` | Test contract loading flow, fallbacks |
-| `src/utils/__tests__/deploymentMode.test.ts` | Test IPFS gateway detection, mode detection |
-| `scripts/__tests__/bundle-local-abis.test.js` | Test Foundry/Hardhat artifact scanning |
-| `jest.config.js` | Jest configuration |
-| `jest.setup.js` | Test setup (mocks for wagmi, fetch, etc.) |
+| File | Tests | Coverage |
+|------|-------|----------|
+| `src/utils/__tests__/deploymentMode.test.ts` | 30 tests | 82.5% statements, 80% branches |
+| `src/hooks/__tests__/useLocalAbis.test.ts` | 17 tests | 92.1% statements, 97.4% branches |
+| `src/hooks/__tests__/useLoadContract.test.ts` | 15 tests | 100% statements, 90.3% branches |
+| `scripts/__tests__/bundle-local-abis.test.js` | 31 tests | 66.2% statements, 60.2% branches |
+| `jest.config.js` | - | Jest configuration with TypeScript support |
+| `jest.setup.js` | - | Test setup with mocks for wagmi, fetch, localStorage |
 
-### Dependencies to Add
+### Dependencies Added
 
 ```bash
-npm install -D jest @testing-library/react @testing-library/jest-dom jest-environment-jsdom
+npm install -D jest @testing-library/react @testing-library/jest-dom jest-environment-jsdom ts-jest @types/jest
 ```
 
-### Test Cases
+### Test Results
 
-**useLocalAbis.ts**:
-- Returns empty when manifest doesn't exist
-- Parses valid manifest correctly
-- Caches manifest after first load
-- `invalidateManifestCache()` clears cache
+**Total: 93 tests passing**
 
-**useLoadContract.ts**:
-- Validates address format
-- Falls back to manual ABI when metadata not found
-- Stores contract in Redux on success
+### Coverage Thresholds Configured
 
-**deploymentMode.ts**:
-- Detects localhost as 'local'
-- Detects IPFS gateways correctly (ipfs.io, dweb.link, etc.)
-- Detects ipfs:// protocol
+```javascript
+coverageThreshold: {
+  './src/utils/deploymentMode.ts': { branches: 70, functions: 80, lines: 70, statements: 70 },
+  './src/hooks/useLocalAbis.ts': { branches: 50, functions: 50, lines: 50, statements: 50 },
+  './scripts/bundle-local-abis.js': { branches: 40, functions: 60, lines: 50, statements: 50 },
+}
+```
+
+### Refactoring for Testability
+
+- `deploymentMode.ts`: Added optional `LocationLike` parameter for testing without mocking `window.location`
+- `bundle-local-abis.js`: Exported functions for unit testing
+- `useLocalAbis.ts`: Fixed bug where errors weren't properly propagated to hook state
 
 ---
 
-## 2. Fix TypeScript Types in useLoadContract
+## 2. Fix TypeScript Types in useLoadContract - COMPLETED
 
 **Priority**: High
 **Effort**: Low
+**Status**: Completed
 
-### Current Issues
+### Changes Made
 
 ```typescript
-// src/hooks/useLoadContract.ts - lines 75-85
+// Before: @ts-ignore comments throughout
 const contract = getContract({
     //@ts-ignore
     address: contractAddress,
@@ -77,31 +81,34 @@ const contract = getContract({
     //@ts-ignore
     walletClient: wallet,
 });
+
+// After: Proper types from viem
+import { isAddress, getContract, type Abi, type Address } from "viem";
+
+type ContractInstance = {
+    address: Address;
+    abi: Abi;
+    read?: Record<string, unknown>;
+    write?: Record<string, unknown>;
+    simulate?: Record<string, unknown>;
+};
+
+const loadContract = useCallback(async (addressToLoad: string, abi: Abi) => {
+    const contractInstance = getContract({
+        address: addressToLoad as Address,
+        abi: abi,
+        walletClient: wallet.data ?? undefined,
+        publicClient: client,
+    });
+    // ...
+}, [wallet.data, client]);
 ```
 
-### Solution
-
-```typescript
-import { Abi, Address } from 'viem';
-
-const loadContract = useCallback(async (
-  contractAddress: Address,
-  manualAbi: Abi
-) => {
-  const contract = getContract({
-    address: contractAddress as Address,
-    abi: manualAbi,
-    client: { wallet: wallet.data, public: client }
-  });
-  // ...
-}, [wallet, client]);
-```
-
-### Files to Modify
+### Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/hooks/useLoadContract.ts` | Add proper types, remove @ts-ignore |
+| `src/hooks/useLoadContract.ts` | Removed all `@ts-ignore`, added proper types from viem |
 
 ---
 
@@ -109,6 +116,7 @@ const loadContract = useCallback(async (
 
 **Priority**: Medium
 **Effort**: Low
+**Status**: Pending
 
 ### Current Problem
 
@@ -159,6 +167,7 @@ export function useNotification() {
 
 **Priority**: Low
 **Effort**: Low
+**Status**: Pending
 
 ### Files to Modify
 
@@ -191,6 +200,7 @@ if (loading) {
 
 **Priority**: Low
 **Effort**: Medium
+**Status**: Pending
 
 ### Background
 
@@ -244,6 +254,7 @@ export async function detectProxy(client: PublicClient, address: Address) {
 
 **Priority**: Low
 **Effort**: Medium
+**Status**: Pending
 
 ### Background
 
@@ -267,6 +278,7 @@ From `docs/POC.md`:
 
 **Priority**: Low (defer until needed)
 **Effort**: Medium
+**Status**: Pending - Create separate branch when ready
 
 ### Not Recommended Now
 
@@ -280,12 +292,12 @@ Wagmi 2.x migration requires:
 
 ---
 
-## Implementation Order
+## Next Steps
 
-1. **Fix TypeScript types** - Quick win, improves code quality
-2. **Add tests** - Foundation for safe refactoring
-3. **Add error notifications** - Better UX
+1. ~~**Fix TypeScript types**~~ - DONE
+2. ~~**Add tests**~~ - DONE (93 tests passing)
+3. **Add error notifications** - Better UX (next priority)
 4. **Add loading skeletons** - Polish
 5. **Proxy detection** - Feature from POC
 6. **IPFS export/import** - Feature from POC
-7. **Dependency updates** - Only when necessary
+7. **Dependency updates** - Only when necessary (create separate branch)

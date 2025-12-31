@@ -131,6 +131,8 @@ export function useLocalAbis() {
       .then((m) => {
         setManifest(m);
         setLoading(false);
+        // Check for error that was caught internally by loadManifest
+        setError(manifestError);
       })
       .catch((e) => {
         setError(e);

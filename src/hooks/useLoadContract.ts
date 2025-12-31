@@ -2,8 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import { useWalletClient, usePublicClient } from "wagmi";
 import { MetadataSources, getMetadataFromAddress } from "@ethereum-sourcify/contract-call-decoder";
 import { EthereumProvider } from "ethereum-provider";
-import { GetContractReturnType, isAddress } from "viem";
-import { getContract } from "viem";
+import { isAddress, getContract, type Abi, type Address } from "viem";
 import { useAppDispatch } from "@/store/hooks";
 import { addContract } from "@/store/features/contracts/contractsSlice";
 import { getLocalAbi } from '@/hooks/useLocalAbis';
@@ -19,6 +18,16 @@ export type ContractLoadingState =
     'contract-error' |
     'contract-loaded';
 
+// Contract instance type - using generic object since viem's GetContractReturnType
+// requires complex generics that depend on the specific ABI
+type ContractInstance = {
+    address: Address;
+    abi: Abi;
+    read?: Record<string, unknown>;
+    write?: Record<string, unknown>;
+    simulate?: Record<string, unknown>;
+};
+
 export const useLoadContract = (
     contractAddress: string,
     contractName?: string | undefined
@@ -29,7 +38,7 @@ export const useLoadContract = (
     const dispatch = useAppDispatch();
 
     const [loadingState, setLoadingState] = useState<ContractLoadingState>('none');
-    const [contract, setContract] = useState<GetContractReturnType | undefined>(undefined);
+    const [contract, setContract] = useState<ContractInstance | undefined>(undefined);
 
     const [isMetadataAvailable, setIsMetadataAvailable] = useState<boolean>(false);
     const [contractMetdataSource, setContractMetdataSource] = useState<MetadataSources | undefined>(undefined);
@@ -56,42 +65,39 @@ export const useLoadContract = (
                     metadataAtChainId: metadataAtChainId,
                     metadataSource: contractMetdataSource,
                 }
-            }));;
+            }));
         }
     }, [contract, contractAddress, contractMetdataSource, contractName, dispatch, isMetadataAvailable, metadataAtChainId]);
 
 
 
-    const loadContract = useCallback(async (contractAddress: string, manualAbi: string) => {
+    const loadContract = useCallback(async (addressToLoad: string, abi: Abi) => {
         try {
-
-            if (contractAddress.length !== 42) {
+            if (addressToLoad.length !== 42 || !isAddress(addressToLoad)) {
                 return false;
             }
 
-            console.log(manualAbi);
             setLoadingState('loading-contract');
 
-            const contract = getContract({
-                //@ts-ignore
-                address: contractAddress,
-                //@ts-ignore
-                abi: manualAbi,
-                //@ts-ignore
-                walletClient: wallet,
+            const contractInstance = getContract({
+                address: addressToLoad as Address,
+                abi: abi,
+                walletClient: wallet.data ?? undefined,
+                publicClient: client,
             });
+
             setLoadingState('contract-loaded');
-            //@ts-ignore
-            setContract(contract);
-            return contract;
+            setContract(contractInstance as ContractInstance);
+            return contractInstance;
         } catch (e) {
-            console.log(e);
+            console.error('Failed to load contract:', e);
             setLoadingState('contract-error');
+            return false;
         }
-    }, [wallet]);
+    }, [wallet.data, client]);
 
 
-    const loadLocalAbi = useCallback(async (contractAddress: string, name: string) => {
+    const loadLocalAbi = useCallback(async (addressToLoad: string, name: string) => {
         try {
             setLoadingState('loading-abi');
             const json = await getLocalAbi(name);
@@ -99,11 +105,12 @@ export const useLoadContract = (
                 setLoadingState('metadata-not-found');
                 return false;
             }
-            // abi should be an array
-            await loadContract(contractAddress, json.abi as unknown as string);
+            // Ensure abi is an array
+            const abi = Array.isArray(json.abi) ? json.abi : JSON.parse(json.abi);
+            await loadContract(addressToLoad, abi as Abi);
             return true;
         } catch (e) {
-            console.error(e);
+            console.error('Failed to load local ABI:', e);
             setLoadingState('abi-error');
             return false;
         }
@@ -129,24 +136,20 @@ export const useLoadContract = (
             } else {
                 setLoadingState('loading-abi');
 
-                const abi = metadata.output.abi;
+                const abi = metadata.output.abi as Abi;
                 setIsMetadataAvailable(true);
                 setMetadataAtChainId(
                     metadataSource === MetadataSources.Sourcify ? chainId : await client.getChainId()
                 );
                 setContractMetdataSource(metadataSource);
-                setLoadingState('contract-loaded');
 
-                loadContract(contractAddress, abi);
-
+                await loadContract(contractAddress, abi);
             }
         } catch (e) {
-            console.log(e);
+            console.error('Failed to load contract metadata:', e);
             setLoadingState('metadata-not-found');
         }
-
-        console.log(loadingState);
-    }, [client, contractAddress, loadContract, loadingState]);
+    }, [client, contractAddress, loadContract]);
 
 
 
@@ -160,6 +163,6 @@ export const useLoadContract = (
             setLoadingState('none');
             setContract(undefined);
         }
-    }), [loadingState, loadContractMetadata, loadContract, contract]);
+    }), [loadingState, loadContractMetadata, loadContract, loadLocalAbi, contract]);
 
 }

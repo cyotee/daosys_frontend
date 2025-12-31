@@ -2,6 +2,13 @@
 
 export type DeploymentMode = 'local' | 'ipfs' | 'hosted';
 
+/** Location-like interface for testing */
+export interface LocationLike {
+  hostname: string;
+  protocol: string;
+  pathname: string;
+}
+
 // Known IPFS gateway domains
 const IPFS_GATEWAY_PATTERNS = [
   /^ipfs\.io$/,
@@ -17,15 +24,30 @@ const IPFS_GATEWAY_PATTERNS = [
 ];
 
 /**
- * Detect the current deployment mode based on the URL
+ * Get the current location or a provided one for testing
  */
-export function getDeploymentMode(): DeploymentMode {
+function getLocation(location?: LocationLike): LocationLike | null {
+  if (location) {
+    return location;
+  }
   if (typeof window === 'undefined') {
+    return null;
+  }
+  return window.location;
+}
+
+/**
+ * Detect the current deployment mode based on the URL
+ * @param location Optional location object for testing
+ */
+export function getDeploymentMode(location?: LocationLike): DeploymentMode {
+  const loc = getLocation(location);
+  if (!loc) {
     return 'local'; // SSR context, assume local
   }
 
-  const hostname = window.location.hostname;
-  const protocol = window.location.protocol;
+  const hostname = loc.hostname;
+  const protocol = loc.protocol;
 
   // Check for ipfs:// or ipns:// protocols
   if (protocol === 'ipfs:' || protocol === 'ipns:') {
@@ -50,7 +72,7 @@ export function getDeploymentMode(): DeploymentMode {
   }
 
   // Check if URL contains IPFS hash patterns
-  const path = window.location.pathname;
+  const path = loc.pathname;
   if (path.match(/\/ipfs\/Qm[a-zA-Z0-9]{44}/) || path.match(/\/ipfs\/bafy[a-zA-Z0-9]+/)) {
     return 'ipfs';
   }
@@ -77,9 +99,10 @@ export function setLocalAbisAvailable(available: boolean): void {
 
 /**
  * Get a human-readable description of the current mode
+ * @param location Optional location object for testing
  */
-export function getDeploymentModeLabel(): string {
-  const mode = getDeploymentMode();
+export function getDeploymentModeLabel(location?: LocationLike): string {
+  const mode = getDeploymentMode(location);
   switch (mode) {
     case 'local':
       return 'Local Development';

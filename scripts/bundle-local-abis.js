@@ -304,4 +304,22 @@ function main() {
   }
 }
 
-main();
+// Export for testing
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    parseArgs,
+    findFileUp,
+    parseFoundryConfig,
+    parseHardhatConfig,
+    detectProjectConfig,
+    scanFoundryArtifacts,
+    scanHardhatArtifacts,
+    main,
+    MAX_CONTRACTS
+  };
+}
+
+// Run if executed directly
+if (require.main === module) {
+  main();
+}
