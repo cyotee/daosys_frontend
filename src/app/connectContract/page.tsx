@@ -6,12 +6,15 @@ import Select from '@/components/Select';
 import { useNotification } from '@/components/Notifications';
 import { useLoadContract } from '@/hooks/useLoadContract';
 import { useLocalAbis } from '@/hooks/useLocalAbis';
+import { useProxyDetection } from '@/hooks/useProxyDetection';
 import { getDeploymentMode, getDeploymentModeLabel } from '@/utils/deploymentMode';
+import { getProxyTypeLabel } from '@/utils/proxyDetection';
 import { MetadataSources } from '@ethereum-sourcify/contract-call-decoder';
-import { Chip, FormControl, Grid, InputLabel, MenuItem, TextField, Typography, Alert, Divider } from '@mui/material';
+import { Chip, FormControl, Grid, InputLabel, MenuItem, TextField, Typography, Alert, Divider, CircularProgress } from '@mui/material';
 import type { Abi } from 'viem';
+import { isAddress } from 'viem';
 import { NextPage } from 'next';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { usePublicClient } from 'wagmi';
 
 
@@ -30,6 +33,14 @@ const Page: NextPage = () => {
     } = useLoadContract(address, contractName);
 
     const client = usePublicClient();
+
+    // Proxy detection
+    const {
+        proxyInfo,
+        detectionState,
+        detect: detectProxy,
+        reset: resetProxyDetection
+    } = useProxyDetection();
 
     // Local ABIs hook
     const {
@@ -50,6 +61,15 @@ const Page: NextPage = () => {
 
         getChainId();
     }, [client]);
+
+    // Detect proxy when address changes
+    useEffect(() => {
+        if (address && isAddress(address)) {
+            detectProxy(address);
+        } else {
+            resetProxyDetection();
+        }
+    }, [address, detectProxy, resetProxyDetection]);
 
     const [metadataSource, setMetadataSource] = useState<number | string>('');
     const deploymentMode = getDeploymentMode();
@@ -103,6 +123,14 @@ const Page: NextPage = () => {
         }
     }
 
+    const handleLoadImplementation = useCallback(() => {
+        if (proxyInfo?.implementationAddress) {
+            setAddress(proxyInfo.implementationAddress);
+            resetState();
+            notifySuccess('Switched to implementation address. You can now load its ABI.');
+        }
+    }, [proxyInfo, resetState, notifySuccess]);
+
     return (<>
         <Box>
             <Typography variant='h5'>
@@ -127,6 +155,69 @@ const Page: NextPage = () => {
                     fullWidth
                 />
             </FormControl>
+
+            {/* Proxy Detection Section */}
+            {detectionState === 'detecting' && (
+                <Alert severity="info" sx={{ mt: 2 }} icon={<CircularProgress size={20} />}>
+                    Detecting proxy pattern...
+                </Alert>
+            )}
+
+            {detectionState === 'detected' && proxyInfo?.isProxy && (
+                <Box sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'warning.main', borderRadius: 1, bgcolor: 'warning.dark', opacity: 0.9 }}>
+                    <Typography variant='subtitle2' color='warning.contrastText' gutterBottom>
+                        🔗 Proxy Contract Detected
+                    </Typography>
+                    <Grid container spacing={1}>
+                        <Grid item xs={12}>
+                            <Chip
+                                label={getProxyTypeLabel(proxyInfo.proxyType)}
+                                color="warning"
+                                size="small"
+                            />
+                        </Grid>
+                        {proxyInfo.implementationAddress && (
+                            <Grid item xs={12}>
+                                <Typography variant='body2' color='warning.contrastText'>
+                                    Implementation: <code style={{ fontSize: '0.85em' }}>{proxyInfo.implementationAddress}</code>
+                                </Typography>
+                            </Grid>
+                        )}
+                        {proxyInfo.beaconAddress && (
+                            <Grid item xs={12}>
+                                <Typography variant='body2' color='warning.contrastText'>
+                                    Beacon: <code style={{ fontSize: '0.85em' }}>{proxyInfo.beaconAddress}</code>
+                                </Typography>
+                            </Grid>
+                        )}
+                        {proxyInfo.adminAddress && (
+                            <Grid item xs={12}>
+                                <Typography variant='body2' color='warning.contrastText'>
+                                    Admin: <code style={{ fontSize: '0.85em' }}>{proxyInfo.adminAddress}</code>
+                                </Typography>
+                            </Grid>
+                        )}
+                        {proxyInfo.implementationAddress && (
+                            <Grid item xs={12} sx={{ mt: 1 }}>
+                                <Button
+                                    size="small"
+                                    variant="outlined"
+                                    onClick={handleLoadImplementation}
+                                    sx={{ borderColor: 'warning.contrastText', color: 'warning.contrastText' }}
+                                >
+                                    Load Implementation Contract
+                                </Button>
+                            </Grid>
+                        )}
+                    </Grid>
+                </Box>
+            )}
+
+            {detectionState === 'detected' && !proxyInfo?.isProxy && address && isAddress(address) && (
+                <Alert severity="success" sx={{ mt: 2 }}>
+                    Not a proxy contract - you can load the ABI directly.
+                </Alert>
+            )}
 
             {/* Local ABI Section - shown when local ABIs are available */}
             {hasLocalAbis && (
@@ -270,6 +361,7 @@ const Page: NextPage = () => {
                         setContractName(undefined);
                         setLocalSelectedName(undefined);
                         resetState();
+                        resetProxyDetection();
                     }}
                 >
                     Load another contract

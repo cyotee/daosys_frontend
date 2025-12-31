@@ -1,5 +1,10 @@
 require('@testing-library/jest-dom');
 
+// Add TextEncoder/TextDecoder for viem
+const { TextEncoder, TextDecoder } = require('util');
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
 // Mock window.matchMedia for MUI components
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

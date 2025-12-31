@@ -12,7 +12,7 @@ This plan covers quality improvements for the DaoSYS Frontend to make it product
 | 2 | Fix TypeScript types in useLoadContract | High | Low | **COMPLETED** |
 | 3 | Add error notifications | Medium | Low | **COMPLETED** |
 | 4 | Add loading skeletons | Low | Low | **COMPLETED** |
-| 5 | Implement proxy contract detection | Low | Medium | Pending |
+| 5 | Implement proxy contract detection | Low | Medium | **COMPLETED** |
 | 6 | Implement IPFS collection export/import | Low | Medium | Pending |
 | 7 | Update dependencies (Wagmi 2.x) | Low | Medium | Pending |
 
@@ -197,11 +197,11 @@ if (!mounted) {
 
 ---
 
-## 5. Implement Proxy Contract Detection
+## 5. Implement Proxy Contract Detection - COMPLETED
 
 **Priority**: Low
 **Effort**: Medium
-**Status**: Pending
+**Status**: Completed
 
 ### Background
 
@@ -210,44 +210,41 @@ From `docs/POC.md`:
 > 2. Get proxy implementation
 > 3. Display implementation interaction UI and proxy interaction UI too
 
-### Implementation
+### Files Created
 
-Detect common proxy patterns:
-- EIP-1967 (Transparent Proxy)
-- EIP-1822 (UUPS)
-- EIP-897 (Delegate Proxy)
+| File | Purpose |
+|------|---------|
+| `src/utils/proxyDetection.ts` | Core proxy detection logic |
+| `src/hooks/useProxyDetection.ts` | React hook for proxy detection |
+| `src/utils/__tests__/proxyDetection.test.ts` | 15 tests for detection logic |
+| `src/hooks/__tests__/useProxyDetection.test.ts` | 10 tests for the hook |
 
-### Files to Create/Modify
+### Files Modified
 
-| File | Action |
-|------|--------|
-| `src/utils/proxyDetection.ts` | CREATE - Detect proxy type, get implementation |
-| `src/hooks/useLoadContract.ts` | MODIFY - Check for proxy, load both ABIs |
-| `src/app/connectContract/page.tsx` | MODIFY - Show proxy info, option to load implementation |
+| File | Changes |
+|------|---------|
+| `src/app/connectContract/page.tsx` | Integrated proxy detection UI |
+| `jest.setup.js` | Added TextEncoder/TextDecoder for viem |
 
-### Implementation
+### Proxy Types Detected
 
-```typescript
-// proxyDetection.ts
-import { PublicClient, Address } from 'viem';
+- **EIP-1967**: Transparent Proxy / UUPS (OpenZeppelin) - checks implementation slot
+- **EIP-1967-beacon**: Beacon Proxy - checks beacon slot and retrieves implementation from beacon
+- **EIP-1822**: UUPS (older standard) - checks logic slot
 
-// EIP-1967 storage slots
-const IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
-const ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
+### Features Implemented
 
-export async function detectProxy(client: PublicClient, address: Address) {
-  // Read implementation slot
-  const impl = await client.getStorageAt({ address, slot: IMPLEMENTATION_SLOT });
-  if (impl && impl !== '0x' + '0'.repeat(64)) {
-    return {
-      isProxy: true,
-      type: 'EIP-1967',
-      implementation: '0x' + impl.slice(-40) as Address
-    };
-  }
-  return { isProxy: false };
-}
-```
+- Automatic proxy detection when valid address is entered
+- Displays proxy type, implementation address, beacon address (if applicable), admin address
+- "Load Implementation Contract" button to switch to implementation address
+- Non-proxy contracts show success message
+- Detection state indicator (detecting/detected/error)
+
+### Test Results
+
+- `proxyDetection.test.ts`: 15 tests
+- `useProxyDetection.test.ts`: 10 tests
+- **Total new tests**: 25 tests (118 total across all suites)
 
 ---
 
@@ -299,6 +296,6 @@ Wagmi 2.x migration requires:
 2. ~~**Add tests**~~ - DONE (93 tests passing)
 3. ~~**Add error notifications**~~ - DONE (toast notifications with MUI Snackbar)
 4. ~~**Add loading skeletons**~~ - DONE (SSR hydration handling)
-5. **Proxy detection** - Feature from POC (next priority)
-6. **IPFS export/import** - Feature from POC
+5. ~~**Proxy detection**~~ - DONE (118 tests passing, EIP-1967/1822/beacon detection)
+6. **IPFS export/import** - Feature from POC (next priority)
 7. **Dependency updates** - Only when necessary (create separate branch)
