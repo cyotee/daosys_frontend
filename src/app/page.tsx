@@ -5,11 +5,13 @@ import { NextPage } from 'next';
 import { TabWithClose } from '@/components/TabWithClose';
 import { Grid, Tab, Tabs } from '@mui/material';
 import { TabViewer } from '@/store/features/tabs/components/TabViewer';
+import { TabsSkeleton } from '@/components/Skeletons';
 import { Add } from '@mui/icons-material';
 import useTabs from '@/store/features/tabs/hooks/useTabs';
 import useSelectedTab from '@/store/features/userPreferences/hooks/useSelectedTab';
 
 const Home: NextPage = () => {
+  const [mounted, setMounted] = useState(false);
 
   const {
     selectTab: setTab,
@@ -23,6 +25,10 @@ const Home: NextPage = () => {
   } = useTabs();
 
   const [tabId, setTabId] = useState<string | undefined | number>('new');
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
 
 
@@ -57,6 +63,11 @@ const Home: NextPage = () => {
 
 
 
+
+  // Show skeleton during SSR hydration
+  if (!mounted) {
+    return <TabsSkeleton />;
+  }
 
   return (<>
     <Grid container gap={2}>

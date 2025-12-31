@@ -11,7 +11,7 @@ This plan covers quality improvements for the DaoSYS Frontend to make it product
 | 1 | Add tests for hooks and utilities | High | Medium | **COMPLETED** |
 | 2 | Fix TypeScript types in useLoadContract | High | Low | **COMPLETED** |
 | 3 | Add error notifications | Medium | Low | **COMPLETED** |
-| 4 | Add loading skeletons | Low | Low | Pending |
+| 4 | Add loading skeletons | Low | Low | **COMPLETED** |
 | 5 | Implement proxy contract detection | Low | Medium | Pending |
 | 6 | Implement IPFS collection export/import | Low | Medium | Pending |
 | 7 | Update dependencies (Wagmi 2.x) | Low | Medium | Pending |
@@ -154,34 +154,44 @@ notifyWarning('Metadata not found');
 
 ---
 
-## 4. Add Loading Skeletons
+## 4. Add Loading Skeletons - COMPLETED
 
 **Priority**: Low
 **Effort**: Low
-**Status**: Pending
+**Status**: Completed
 
-### Files to Modify
+### Files Created
+
+| File | Purpose |
+|------|---------|
+| `src/components/Skeletons/PageSkeleton.tsx` | Reusable skeleton components |
+| `src/components/Skeletons/index.ts` | Export barrel file |
+
+### Files Modified
 
 | File | Changes |
 |------|---------|
-| `src/app/page.tsx` | Add skeleton while tabs load |
-| `src/app/collections/page.tsx` | Add skeleton while collections load |
-| `src/app/connectContract/page.tsx` | Already has loading state (good) |
+| `src/app/page.tsx` | Added `TabsSkeleton` during SSR hydration |
+| `src/app/collections/page.tsx` | Added `CollectionsSkeleton` during SSR hydration |
+| `src/app/connectContract/page.tsx` | Already has loading state (no changes needed) |
 
-### Implementation
+### Skeleton Components
+
+- **TabsSkeleton**: Mimics tab bar and content area
+- **CollectionsSkeleton**: Mimics header and table rows
+- **ContractFormSkeleton**: Mimics form fields (available for future use)
+
+### Implementation Pattern
 
 ```typescript
-import { Skeleton } from '@mui/material';
+const [mounted, setMounted] = useState(false);
 
-// In component
-if (loading) {
-  return (
-    <Box>
-      <Skeleton variant="rectangular" height={200} />
-      <Skeleton variant="text" sx={{ mt: 2 }} />
-      <Skeleton variant="text" />
-    </Box>
-  );
+useEffect(() => {
+  setMounted(true);
+}, []);
+
+if (!mounted) {
+  return <TabsSkeleton />;
 }
 ```
 
@@ -288,7 +298,7 @@ Wagmi 2.x migration requires:
 1. ~~**Fix TypeScript types**~~ - DONE
 2. ~~**Add tests**~~ - DONE (93 tests passing)
 3. ~~**Add error notifications**~~ - DONE (toast notifications with MUI Snackbar)
-4. **Add loading skeletons** - Polish (next priority)
-5. **Proxy detection** - Feature from POC
+4. ~~**Add loading skeletons**~~ - DONE (SSR hydration handling)
+5. **Proxy detection** - Feature from POC (next priority)
 6. **IPFS export/import** - Feature from POC
 7. **Dependency updates** - Only when necessary (create separate branch)
