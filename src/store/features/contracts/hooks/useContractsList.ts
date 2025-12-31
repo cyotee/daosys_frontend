@@ -16,7 +16,7 @@ export const useContractsList = (props: ContractsListProps = {}) => {
                 if (props.filter?.startsWith('0x')) {
                     return address.toLowerCase().includes(props.filter.toLowerCase());
                 } else if (typeof props.filter === 'string') {
-                    return contract.abi.name.toLowerCase().includes(props.filter.toLowerCase());
+                    return contract.name?.toLowerCase().includes(props.filter.toLowerCase()) ?? false;
                 }
             });
         } else {
@@ -25,7 +25,7 @@ export const useContractsList = (props: ContractsListProps = {}) => {
     }, [all, props.filter]);
 
     const findContract = useCallback((address: string) => {
-        return contracts.find(([contractAddress, contract]) => contractAddress === address);
+        return contracts.find(([contractAddress, contract]) => contractAddress.toLowerCase() === address.toLowerCase());
     }, [contracts]);
 
     return useMemo(() => ({

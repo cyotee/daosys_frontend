@@ -37,23 +37,20 @@ const Home: NextPage = () => {
 
     if (targetTab.length > 0) {
       setTabId(tabs.indexOf(targetTab[0]));
+    } else if (tabs.length > 0) {
+      // selectedTab doesn't match any tab - select the first available tab
+      setTabId(0);
+      setTab(tabs[0].id);
     } else {
-      setTabId(tabs.length > 0 ? parseInt(Object.keys(tabs)[0]) : 'new');
+      setTabId('new');
     }
-  }, [selectedTab, tabs])
+  }, [selectedTab, tabs, setTab])
 
   const handleNewTab = useCallback(() => {
-    const newId: number = newTab();
-    const targetTab = tabs[newId] ?? undefined;
-
-
-    if (targetTab) {
-      setTab(targetTab.id);
-    }
-
+    const newId = newTab();  // newTab now returns UUID string
+    setTab(newId);  // Set selected tab to the new tab's UUID directly
     console.log('handleNewTab', newId);
-
-  }, [newTab, setTab, tabs]);
+  }, [newTab, setTab]);
 
 
   useEffect(() => {

@@ -28,10 +28,8 @@ export const useTabs = () => {
             contractAddress: '',
         });
 
-        let tabId = Math.max(...Object.keys(tabs).map(key => parseInt(key)));
-
-        return tabId + 1;
-    }, [createTab, tabs]);
+        return id;  // Return the UUID directly, not a numeric index
+    }, [createTab]);
 
 
     return useMemo(() => ({

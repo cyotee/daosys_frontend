@@ -27,7 +27,7 @@ export const store = configureStore({
 });
 
 store.subscribe(() => {
-    if (typeof localStorage === undefined) return
+    if (typeof localStorage === 'undefined') return
     localStorage!.setItem('redux::collections', JSON.stringify(store.getState().collectionsSlice))
     localStorage!.setItem('redux::userPreferences', JSON.stringify(store.getState().userPreferencesSlice))
     localStorage!.setItem('redux::contracts', JSON.stringify(store.getState().contractsSlice))
