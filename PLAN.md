@@ -228,23 +228,30 @@ From `docs/POC.md`:
 
 ### Proxy Types Detected
 
-- **EIP-1967**: Transparent Proxy / UUPS (OpenZeppelin) - checks implementation slot
-- **EIP-1967-beacon**: Beacon Proxy - checks beacon slot and retrieves implementation from beacon
-- **EIP-1822**: UUPS (older standard) - checks logic slot
+| Type | Detection Method | Description |
+|------|------------------|-------------|
+| **EIP-1967** | Storage slot | Transparent Proxy / UUPS (OpenZeppelin) |
+| **EIP-1967-beacon** | Storage slot + function call | Beacon Proxy - retrieves implementation from beacon |
+| **EIP-1822** | Storage slot | UUPS (older standard) |
+| **EIP-897** | Function call + bytecode check | Delegate Proxy via `implementation()` |
+| **GnosisSafe** | Function call or slot 0 | Gnosis Safe Proxy via `masterCopy()` or slot 0 |
+| **EIP-2535** | Function call | Diamond Proxy via `facetAddresses()` or `facets()` |
+| **Compound** | Function call | Compound-style via `comptrollerImplementation()` |
 
 ### Features Implemented
 
 - Automatic proxy detection when valid address is entered
 - Displays proxy type, implementation address, beacon address (if applicable), admin address
-- "Load Implementation Contract" button to switch to implementation address
+- Diamond proxy: displays all facet addresses in scrollable list
+- "Load Implementation Contract" button to switch to implementation address (non-Diamond proxies)
 - Non-proxy contracts show success message
 - Detection state indicator (detecting/detected/error)
 
 ### Test Results
 
-- `proxyDetection.test.ts`: 15 tests
-- `useProxyDetection.test.ts`: 10 tests
-- **Total new tests**: 25 tests (118 total across all suites)
+- `proxyDetection.test.ts`: 23 tests
+- `useProxyDetection.test.ts`: 11 tests
+- **Total new tests**: 34 tests (131 total across all suites)
 
 ---
 

@@ -197,7 +197,21 @@ const Page: NextPage = () => {
                                 </Typography>
                             </Grid>
                         )}
-                        {proxyInfo.implementationAddress && (
+                        {proxyInfo.facetAddresses && proxyInfo.facetAddresses.length > 0 && (
+                            <Grid item xs={12}>
+                                <Typography variant='body2' color='warning.contrastText' gutterBottom>
+                                    Diamond Facets ({proxyInfo.facetAddresses.length}):
+                                </Typography>
+                                <Box sx={{ maxHeight: 150, overflow: 'auto', pl: 1 }}>
+                                    {proxyInfo.facetAddresses.map((facet, idx) => (
+                                        <Typography key={facet} variant='caption' color='warning.contrastText' component='div'>
+                                            {idx + 1}. <code style={{ fontSize: '0.85em' }}>{facet}</code>
+                                        </Typography>
+                                    ))}
+                                </Box>
+                            </Grid>
+                        )}
+                        {proxyInfo.implementationAddress && proxyInfo.proxyType !== 'EIP-2535' && (
                             <Grid item xs={12} sx={{ mt: 1 }}>
                                 <Button
                                     size="small"

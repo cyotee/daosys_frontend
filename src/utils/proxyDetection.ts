@@ -3,9 +3,13 @@
 import type { PublicClient, Address } from 'viem';
 
 export type ProxyType =
-  | 'EIP-1967'      // Transparent Proxy / UUPS (OpenZeppelin)
+  | 'EIP-1967'        // Transparent Proxy / UUPS (OpenZeppelin)
   | 'EIP-1967-beacon' // Beacon Proxy
-  | 'EIP-1822'      // UUPS (older standard)
+  | 'EIP-1822'        // UUPS (older standard)
+  | 'EIP-897'         // DelegateProxy (function-based)
+  | 'GnosisSafe'      // Gnosis Safe Proxy
+  | 'EIP-2535'        // Diamond Proxy
+  | 'Compound'        // Compound-style Proxy
   | 'none';
 
 export interface ProxyInfo {
@@ -14,6 +18,8 @@ export interface ProxyInfo {
   implementationAddress: Address | null;
   beaconAddress: Address | null;
   adminAddress: Address | null;
+  // Diamond-specific: array of facet addresses
+  facetAddresses: Address[] | null;
 }
 
 // EIP-1967 storage slots (keccak256 hash of string - 1)
@@ -25,6 +31,15 @@ const EIP1967_ADMIN_SLOT = '0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6
 // EIP-1822 storage slot
 // https://eips.ethereum.org/EIPS/eip-1822
 const EIP1822_LOGIC_SLOT = '0xc5f16f0fcc639fa48a6947836d9850f504798523bf8c9a3a87d5876cf622bcf7';
+
+// GnosisSafe Proxy - older versions use slot 0, newer use masterCopy slot
+// keccak256("masterCopy") - but the actual slot is 0 for GnosisSafe 1.0-1.2
+const GNOSIS_SAFE_MASTER_COPY_SLOT = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+// Compound-style proxy slots
+// keccak256("eip1967.proxy.implementation") - but Compound uses different patterns
+// Compound Unitroller uses comptrollerImplementation at specific slots
+const COMPOUND_IMPLEMENTATION_SLOT = '0x0000000000000000000000000000000000000000000000000000000000000002';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -63,6 +78,7 @@ export async function detectProxy(
     implementationAddress: null,
     beaconAddress: null,
     adminAddress: null,
+    facetAddresses: null,
   };
 
   try {
@@ -143,11 +159,317 @@ export async function detectProxy(
       }
     }
 
+    // Check EIP-2535 Diamond Proxy (via facetAddresses() function)
+    const diamondResult = await detectDiamondProxy(client, address);
+    if (diamondResult) {
+      result.isProxy = true;
+      result.proxyType = 'EIP-2535';
+      result.facetAddresses = diamondResult.facets;
+      // Diamond proxies don't have a single implementation, but we can set the first facet
+      if (diamondResult.facets.length > 0) {
+        result.implementationAddress = diamondResult.facets[0];
+      }
+      return result;
+    }
+
+    // Check GnosisSafe Proxy (slot 0 contains masterCopy)
+    const gnosisSafeResult = await detectGnosisSafeProxy(client, address);
+    if (gnosisSafeResult) {
+      result.isProxy = true;
+      result.proxyType = 'GnosisSafe';
+      result.implementationAddress = gnosisSafeResult;
+      return result;
+    }
+
+    // Check Compound-style Proxy (comptrollerImplementation)
+    const compoundResult = await detectCompoundProxy(client, address);
+    if (compoundResult) {
+      result.isProxy = true;
+      result.proxyType = 'Compound';
+      result.implementationAddress = compoundResult;
+      return result;
+    }
+
+    // Check EIP-897 DelegateProxy (via implementation() function call)
+    // This is checked last as it's the most generic and could false-positive
+    const eip897Result = await detectEIP897Proxy(client, address);
+    if (eip897Result) {
+      result.isProxy = true;
+      result.proxyType = 'EIP-897';
+      result.implementationAddress = eip897Result;
+      return result;
+    }
+
     return result;
   } catch (error) {
     console.error('Error detecting proxy:', error);
     return result;
   }
+}
+
+/**
+ * Detect EIP-897 DelegateProxy via implementation() function
+ */
+async function detectEIP897Proxy(
+  client: PublicClient,
+  address: Address
+): Promise<Address | null> {
+  try {
+    const impl = await client.readContract({
+      address,
+      abi: [{
+        name: 'implementation',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'implementation',
+    });
+
+    const implAddress = impl as Address;
+    if (implAddress && implAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase()) {
+      // Verify it's actually a contract by checking bytecode via eth_getCode
+      try {
+        const code = await client.getBytecode({ address: implAddress });
+        if (code && code !== '0x') {
+          return implAddress;
+        }
+      } catch {
+        // If getBytecode fails, still return the address since implementation() returned valid data
+        return implAddress;
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Detect GnosisSafe Proxy via masterCopy() function or slot 0
+ */
+async function detectGnosisSafeProxy(
+  client: PublicClient,
+  address: Address
+): Promise<Address | null> {
+  // Try masterCopy() function first (GnosisSafe 1.3+)
+  try {
+    const masterCopy = await client.readContract({
+      address,
+      abi: [{
+        name: 'masterCopy',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'masterCopy',
+    });
+
+    const masterCopyAddress = masterCopy as Address;
+    if (masterCopyAddress && masterCopyAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase()) {
+      return masterCopyAddress;
+    }
+  } catch {
+    // Function doesn't exist, try storage slot
+  }
+
+  // Try slot 0 (GnosisSafe 1.0-1.2 stores masterCopy at slot 0)
+  try {
+    const slot0 = await client.getStorageAt({
+      address,
+      slot: GNOSIS_SAFE_MASTER_COPY_SLOT as `0x${string}`,
+    });
+
+    if (slot0) {
+      const masterCopyAddress = extractAddressFromSlot(slot0);
+      if (masterCopyAddress) {
+        // Verify it looks like a GnosisSafe by checking if it has getThreshold()
+        try {
+          await client.readContract({
+            address,
+            abi: [{
+              name: 'getThreshold',
+              type: 'function',
+              inputs: [],
+              outputs: [{ type: 'uint256' }],
+              stateMutability: 'view',
+            }],
+            functionName: 'getThreshold',
+          });
+          return masterCopyAddress;
+        } catch {
+          // Not a GnosisSafe
+        }
+      }
+    }
+  } catch {
+    // Not a GnosisSafe proxy
+  }
+
+  return null;
+}
+
+/**
+ * Detect EIP-2535 Diamond Proxy via facetAddresses() function
+ */
+async function detectDiamondProxy(
+  client: PublicClient,
+  address: Address
+): Promise<{ facets: Address[] } | null> {
+  try {
+    // Try the standard Diamond Loupe facetAddresses() function
+    const facets = await client.readContract({
+      address,
+      abi: [{
+        name: 'facetAddresses',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address[]' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'facetAddresses',
+    });
+
+    const facetArray = facets as Address[];
+    if (facetArray && facetArray.length > 0) {
+      return { facets: facetArray };
+    }
+  } catch {
+    // Not a Diamond proxy or doesn't implement Loupe
+  }
+
+  // Try alternative: facets() function which returns more detailed info
+  try {
+    const facetsDetailed = await client.readContract({
+      address,
+      abi: [{
+        name: 'facets',
+        type: 'function',
+        inputs: [],
+        outputs: [{
+          type: 'tuple[]',
+          components: [
+            { name: 'facetAddress', type: 'address' },
+            { name: 'functionSelectors', type: 'bytes4[]' }
+          ]
+        }],
+        stateMutability: 'view',
+      }],
+      functionName: 'facets',
+    });
+
+    const facetData = facetsDetailed as Array<{ facetAddress: Address; functionSelectors: string[] }>;
+    if (facetData && facetData.length > 0) {
+      return { facets: facetData.map(f => f.facetAddress) };
+    }
+  } catch {
+    // Not a Diamond proxy
+  }
+
+  return null;
+}
+
+/**
+ * Detect Compound-style Proxy via comptrollerImplementation() or specific storage slots
+ */
+async function detectCompoundProxy(
+  client: PublicClient,
+  address: Address
+): Promise<Address | null> {
+  // Try comptrollerImplementation() function (Compound Unitroller pattern)
+  try {
+    const impl = await client.readContract({
+      address,
+      abi: [{
+        name: 'comptrollerImplementation',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'comptrollerImplementation',
+    });
+
+    const implAddress = impl as Address;
+    if (implAddress && implAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase()) {
+      return implAddress;
+    }
+  } catch {
+    // Not a Compound Unitroller
+  }
+
+  // Try cTokenImplementation() function (Compound CErc20Delegator pattern)
+  try {
+    const impl = await client.readContract({
+      address,
+      abi: [{
+        name: 'implementation',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'implementation',
+    });
+
+    // Check if this is a Compound-style by verifying admin() exists
+    const admin = await client.readContract({
+      address,
+      abi: [{
+        name: 'admin',
+        type: 'function',
+        inputs: [],
+        outputs: [{ type: 'address' }],
+        stateMutability: 'view',
+      }],
+      functionName: 'admin',
+    });
+
+    const implAddress = impl as Address;
+    const adminAddress = admin as Address;
+    if (implAddress && implAddress.toLowerCase() !== ZERO_ADDRESS.toLowerCase() && adminAddress) {
+      return implAddress;
+    }
+  } catch {
+    // Not a Compound-style proxy
+  }
+
+  // Try storage slot approach for older Compound contracts
+  try {
+    const implSlot = await client.getStorageAt({
+      address,
+      slot: COMPOUND_IMPLEMENTATION_SLOT as `0x${string}`,
+    });
+
+    if (implSlot) {
+      const implAddress = extractAddressFromSlot(implSlot);
+      if (implAddress) {
+        // Verify it's a Compound contract by checking for comptroller or underlying
+        try {
+          await client.readContract({
+            address,
+            abi: [{
+              name: 'comptroller',
+              type: 'function',
+              inputs: [],
+              outputs: [{ type: 'address' }],
+              stateMutability: 'view',
+            }],
+            functionName: 'comptroller',
+          });
+          return implAddress;
+        } catch {
+          // Not a Compound-style
+        }
+      }
+    }
+  } catch {
+    // Not a Compound proxy
+  }
+
+  return null;
 }
 
 /**
@@ -161,6 +483,14 @@ export function getProxyTypeLabel(proxyType: ProxyType): string {
       return 'Beacon Proxy (EIP-1967)';
     case 'EIP-1822':
       return 'UUPS Proxy (EIP-1822)';
+    case 'EIP-897':
+      return 'Delegate Proxy (EIP-897)';
+    case 'GnosisSafe':
+      return 'Gnosis Safe Proxy';
+    case 'EIP-2535':
+      return 'Diamond Proxy (EIP-2535)';
+    case 'Compound':
+      return 'Compound-style Proxy';
     default:
       return 'Not a proxy';
   }

@@ -42,6 +42,7 @@ describe('useProxyDetection', () => {
       implementationAddress: '0x1234567890123456789012345678901234567890',
       beaconAddress: null,
       adminAddress: null,
+      facetAddresses: null,
     };
 
     mockDetectProxy.mockResolvedValue(mockProxyInfo);
@@ -114,6 +115,7 @@ describe('useProxyDetection', () => {
       implementationAddress: '0x1234567890123456789012345678901234567890',
       beaconAddress: null,
       adminAddress: null,
+      facetAddresses: null,
     };
 
     mockDetectProxy.mockResolvedValue(mockProxyInfo);
@@ -160,6 +162,7 @@ describe('useProxyDetection', () => {
         implementationAddress: null,
         beaconAddress: null,
         adminAddress: null,
+        facetAddresses: null,
       });
     });
 
@@ -184,6 +187,7 @@ describe('useProxyDetection', () => {
       implementationAddress: null,
       beaconAddress: null,
       adminAddress: null,
+      facetAddresses: null,
     };
 
     mockDetectProxy.mockResolvedValue(mockProxyInfo);
@@ -196,5 +200,31 @@ describe('useProxyDetection', () => {
     });
 
     expect(returnValue).toEqual(mockProxyInfo);
+  });
+
+  it('should detect Diamond proxy with facet addresses', async () => {
+    const mockProxyInfo = {
+      isProxy: true,
+      proxyType: 'EIP-2535',
+      implementationAddress: '0xfacet11234567890facet11234567890facet112',
+      beaconAddress: null,
+      adminAddress: null,
+      facetAddresses: [
+        '0xfacet11234567890facet11234567890facet112',
+        '0xfacet21234567890facet21234567890facet212',
+      ],
+    };
+
+    mockDetectProxy.mockResolvedValue(mockProxyInfo);
+
+    const { result } = renderHook(() => useProxyDetection());
+
+    await act(async () => {
+      await result.current.detect('0x1234567890123456789012345678901234567890');
+    });
+
+    expect(result.current.detectionState).toBe('detected');
+    expect(result.current.proxyInfo?.proxyType).toBe('EIP-2535');
+    expect(result.current.proxyInfo?.facetAddresses).toHaveLength(2);
   });
 });
