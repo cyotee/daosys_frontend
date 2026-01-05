@@ -18,10 +18,12 @@ function parseArgs(argv) {
   return { flags, positional };
 }
 
-function runBundler(projectDir) {
+function runBundler(projectDir, outDir) {
   return new Promise((resolve, reject) => {
     const bundlerPath = path.join(__dirname, '..', 'scripts', 'bundle-local-abis.js');
-    const args = projectDir ? ['--project-dir=' + projectDir] : [];
+    const args = [];
+    if (projectDir) args.push('--project-dir=' + projectDir);
+    if (outDir) args.push('--out-dir=' + outDir);
 
     console.log('Bundling local ABIs...');
     const proc = spawn(process.execPath, [bundlerPath, ...args], {
@@ -38,9 +40,11 @@ function runBundler(projectDir) {
   });
 }
 
-function startWatcher(projectDir) {
+function startWatcher(projectDir, outDir) {
   const watcherPath = path.join(__dirname, '..', 'scripts', 'watch-abis.js');
-  const args = projectDir ? ['--project-dir=' + projectDir] : [];
+  const args = [];
+  if (projectDir) args.push('--project-dir=' + projectDir);
+  if (outDir) args.push('--out-dir=' + outDir);
 
   console.log('Starting ABI watcher...');
   const proc = spawn(process.execPath, [watcherPath, ...args], {
@@ -95,6 +99,8 @@ Examples:
     projectDir = process.env.PWD || process.cwd();
   }
 
+  const outDir = flags['out-dir'] || null;
+
   // Support legacy flags
   if (flags.local) {
     process.env.USE_PWD_FOUNDRY = 'true';
@@ -110,7 +116,7 @@ Examples:
   if (cmd === 'bundle') {
     // Just bundle ABIs and exit
     try {
-      await runBundler(projectDir);
+      await runBundler(projectDir, outDir);
       console.log('ABI bundling complete.');
     } catch (e) {
       console.error('Bundling failed:', e.message);
@@ -122,7 +128,9 @@ Examples:
   if (cmd === 'watch') {
     // Start watcher only (blocks)
     const watcherPath = path.join(__dirname, '..', 'scripts', 'watch-abis.js');
-    const args = projectDir ? ['--project-dir=' + projectDir] : [];
+    const args = [];
+    if (projectDir) args.push('--project-dir=' + projectDir);
+    if (outDir) args.push('--out-dir=' + outDir);
 
     const proc = spawn(process.execPath, [watcherPath, ...args], {
       stdio: 'inherit',
@@ -152,7 +160,7 @@ Examples:
   // Bundle ABIs before starting (unless --no-bundle)
   if (!flags['no-bundle'] && (flags.local || projectDir)) {
     try {
-      await runBundler(projectDir);
+      await runBundler(projectDir, outDir);
     } catch (e) {
       console.warn('ABI bundling failed (continuing anyway):', e.message);
     }
@@ -161,7 +169,7 @@ Examples:
   // Start watcher in dev mode (unless --no-watch)
   let watcherProc = null;
   if (mode === 'dev' && !flags['no-watch'] && (flags.local || projectDir)) {
-    watcherProc = startWatcher(projectDir);
+    watcherProc = startWatcher(projectDir, outDir);
   }
 
   // Resolve Next.js binary

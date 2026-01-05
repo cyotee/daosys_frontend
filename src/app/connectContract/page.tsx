@@ -8,6 +8,7 @@ import { useLoadContract } from '@/hooks/useLoadContract';
 import { useLocalAbis } from '@/hooks/useLocalAbis';
 import { useProxyDetection } from '@/hooks/useProxyDetection';
 import { getDeploymentMode, getDeploymentModeLabel } from '@/utils/deploymentMode';
+import { debugError } from '@/utils/debug';
 import { getProxyTypeLabel } from '@/utils/proxyDetection';
 import { MetadataSources } from '@ethereum-sourcify/contract-call-decoder';
 import { Chip, FormControl, Grid, InputLabel, MenuItem, TextField, Typography, Alert, Divider, CircularProgress } from '@mui/material';
@@ -105,7 +106,7 @@ const Page: NextPage = () => {
                     notifyError('Failed to load contract');
                 }
             } catch (e) {
-                console.error('Invalid ABI JSON:', e);
+                debugError('Invalid ABI JSON:', e);
                 notifyError('Invalid ABI JSON format. Please check your input.');
             }
         } else {

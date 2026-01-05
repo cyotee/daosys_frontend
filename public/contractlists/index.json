@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "generatedAt": "2026-01-05T10:12:36.919Z",
+  "source": {
+    "schemaDir": "/Users/cyotee/Development/github-cyotee/indexedex/lib/daosys/example/schema",
+    "manifestPath": "/Users/cyotee/Development/github-cyotee/indexedex/lib/daosys/example/schema/contractlists.manifest.json"
+  },
+  "items": [
+    {
+      "id": "greeter",
+      "file": "greeter.contractlist.json",
+      "path": "/contractlists/greeter.contractlist.json",
+      "defaultUi": "abi",
+      "matchContractNames": [
+        "GreeterTarget",
+        "Greeter"
+      ]
+    },
+    {
+      "id": "permissioned-greeter",
+      "file": "permissioned-greeter.contractlist.json",
+      "path": "/contractlists/permissioned-greeter.contractlist.json",
+      "defaultUi": "contractlist",
+      "matchContractNames": [
+        "OperableGreeterTarget",
+        "PermissionedGreeter",
+        "OperableGreeter"
+      ]
+    },
+    {
+      "id": "operable-greeter-generated",
+      "file": "operable-greeter-generated.contractlist.json",
+      "path": "/contractlists/operable-greeter-generated.contractlist.json",
+      "defaultUi": "contractlist",
+      "matchContractNames": [
+        "OperableGreeterTarget",
+        "OperableGreeter"
+      ]
+    }
+  ]
+}

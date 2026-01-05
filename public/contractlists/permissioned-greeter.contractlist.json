@@ -1,0 +1,248 @@
+[
+  {
+    "chainId": 31337,
+    "hookName": "usePermissionedGreeterDiamond",
+    "name": "Permissioned Greeter Diamond",
+    "description": "A greeting message contract with operator-based access control. Only authorized operators can update the message.",
+    "functions": [
+      {
+        "getMessage": "Get Current Greeting",
+        "simulate": false,
+        "resultStrategies": [
+          {
+            "type": "read",
+            "label": "Current Message",
+            "format": "text",
+            "inlineAbi": [
+              {
+                "name": "getMessage",
+                "type": "function",
+                "inputs": [],
+                "outputs": [{ "name": "", "type": "string" }],
+                "stateMutability": "view"
+              }
+            ]
+          }
+        ],
+        "arguments": []
+      },
+      {
+        "setMessage": "Update Greeting (Operator Only)",
+        "simulate": true,
+        "resultStrategies": [
+          {
+            "type": "event",
+            "label": "Message Updated",
+            "name": "NewMessage",
+            "arg": "newMessage",
+            "inlineAbi": [
+              {
+                "name": "NewMessage",
+                "type": "event",
+                "inputs": [
+                  { "name": "oldMessage", "type": "string", "indexed": false },
+                  { "name": "newMessage", "type": "string", "indexed": false }
+                ]
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "message",
+            "type": "string",
+            "description": "The new greeting message to store on-chain. Requires operator authorization.",
+            "ui": {
+              "widget": "text",
+              "placeholder": "Enter your greeting message...",
+              "helpText": "Only authorized operators can update this message. Contact the owner to become an operator.",
+              "validation": {
+                "regex": "^.{1,256}$",
+                "errorMessage": "Message must be between 1 and 256 characters"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "owner": "Get Contract Owner",
+        "simulate": false,
+        "resultStrategies": [
+          {
+            "type": "read",
+            "label": "Owner Address",
+            "format": "address",
+            "inlineAbi": [
+              {
+                "name": "owner",
+                "type": "function",
+                "inputs": [],
+                "outputs": [{ "name": "", "type": "address" }],
+                "stateMutability": "view"
+              }
+            ]
+          }
+        ],
+        "arguments": []
+      },
+      {
+        "isOperator": "Check Operator Status",
+        "simulate": false,
+        "resultStrategies": [
+          {
+            "type": "read",
+            "label": "Is Operator",
+            "format": "boolean",
+            "inlineAbi": [
+              {
+                "name": "isOperator",
+                "type": "function",
+                "inputs": [{ "name": "query", "type": "address" }],
+                "outputs": [{ "name": "", "type": "bool" }],
+                "stateMutability": "view"
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "query",
+            "type": "address",
+            "description": "Address to check for operator authorization",
+            "ui": {
+              "widget": "address",
+              "placeholder": "0x...",
+              "helpText": "Enter an address to check if it has operator privileges"
+            }
+          }
+        ]
+      },
+      {
+        "setOperator": "Manage Operator (Owner Only)",
+        "simulate": true,
+        "resultStrategies": [
+          {
+            "type": "event",
+            "label": "Operator Status Changed",
+            "name": "NewGlobalOperatorStatus",
+            "arg": "status",
+            "inlineAbi": [
+              {
+                "name": "NewGlobalOperatorStatus",
+                "type": "event",
+                "inputs": [
+                  { "name": "newOperator", "type": "address", "indexed": false },
+                  { "name": "status", "type": "bool", "indexed": false }
+                ]
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "group": "Operator Management",
+            "fields": [
+              {
+                "name": "newOperator",
+                "type": "address",
+                "description": "Address to grant or revoke operator privileges",
+                "ui": {
+                  "widget": "address",
+                  "placeholder": "0x...",
+                  "helpText": "Enter the address you want to add or remove as an operator"
+                }
+              },
+              {
+                "name": "approval",
+                "type": "bool",
+                "description": "Whether to grant (true) or revoke (false) operator status",
+                "ui": {
+                  "widget": "checkbox",
+                  "helpText": "Check to grant operator status, uncheck to revoke"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "pendingOwner": "Get Pending Owner",
+        "simulate": false,
+        "resultStrategies": [
+          {
+            "type": "read",
+            "label": "Pending Owner Address",
+            "format": "address",
+            "inlineAbi": [
+              {
+                "name": "pendingOwner",
+                "type": "function",
+                "inputs": [],
+                "outputs": [{ "name": "", "type": "address" }],
+                "stateMutability": "view"
+              }
+            ]
+          }
+        ],
+        "arguments": []
+      },
+      {
+        "initiateOwnershipTransfer": "Initiate Ownership Transfer (Owner Only)",
+        "simulate": true,
+        "resultStrategies": [
+          {
+            "type": "event",
+            "label": "Transfer Initiated",
+            "name": "OwnershipTransferInitiated",
+            "arg": "newOwner",
+            "inlineAbi": [
+              {
+                "name": "OwnershipTransferInitiated",
+                "type": "event",
+                "inputs": [
+                  { "name": "prevOwner", "type": "address", "indexed": true },
+                  { "name": "newOwner", "type": "address", "indexed": true }
+                ]
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "newOwner",
+            "type": "address",
+            "description": "Address of the proposed new owner",
+            "ui": {
+              "widget": "address",
+              "placeholder": "0x...",
+              "helpText": "This initiates a multi-step ownership transfer. The new owner must accept the transfer."
+            }
+          }
+        ]
+      },
+      {
+        "acceptOwnershipTransfer": "Accept Ownership Transfer",
+        "simulate": true,
+        "resultStrategies": [
+          {
+            "type": "event",
+            "label": "Ownership Transferred",
+            "name": "OwnershipTransferred",
+            "arg": "newOwner",
+            "inlineAbi": [
+              {
+                "name": "OwnershipTransferred",
+                "type": "event",
+                "inputs": [
+                  { "name": "prevOwner", "type": "address", "indexed": true },
+                  { "name": "newOwner", "type": "address", "indexed": true }
+                ]
+              }
+            ]
+          }
+        ],
+        "arguments": []
+      }
+    ]
+  }
+]

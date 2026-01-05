@@ -4,7 +4,7 @@ import { produce } from "immer";
 export interface UserPreferencesState {
     theme: string,
     selectedCollection: string | undefined,
-    selectedTab: string | number | undefined,
+    selectedTab: string,
 }
 
 export const initialState: UserPreferencesState = {

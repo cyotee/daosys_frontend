@@ -4,19 +4,17 @@ import { Close } from "@mui/icons-material";
 
 export type TabWithCloseProps = {
     label: string;
-    key: string | number,
     onClickCloseIcon?: () => void;
     props?: TabProps,
     tabId: string;
     canBeClosed?: boolean;
 }
 
-export const TabWithClose: FC<TabWithCloseProps> = ({ key, onClickCloseIcon, tabId, canBeClosed = true, ...props }) => {
+export const TabWithClose: FC<TabWithCloseProps & TabProps> = ({ onClickCloseIcon, tabId, canBeClosed = true, ...props }) => {
     return (
         <Tab
             {...props}
             id={tabId}
-            key={key}
             label={
                 <Box sx={{
                     display: 'flex',

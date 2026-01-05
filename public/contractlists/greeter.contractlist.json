@@ -1,0 +1,69 @@
+[
+  {
+    "chainId": 31337,
+    "hookName": "useGreeterDiamond",
+    "name": "Greeter Diamond",
+    "description": "A simple greeting message storage contract deployed as a Diamond proxy",
+    "functions": [
+      {
+        "getMessage": "Get Current Greeting",
+        "simulate": false,
+        "resultStrategies": [
+          {
+            "type": "read",
+            "label": "Current Message",
+            "format": "text",
+            "inlineAbi": [
+              {
+                "name": "getMessage",
+                "type": "function",
+                "inputs": [],
+                "outputs": [{ "name": "", "type": "string" }],
+                "stateMutability": "view"
+              }
+            ]
+          }
+        ],
+        "arguments": []
+      },
+      {
+        "setMessage": "Update Greeting",
+        "simulate": true,
+        "resultStrategies": [
+          {
+            "type": "event",
+            "label": "Message Updated",
+            "name": "NewMessage",
+            "arg": "newMessage",
+            "inlineAbi": [
+              {
+                "name": "NewMessage",
+                "type": "event",
+                "inputs": [
+                  { "name": "oldMessage", "type": "string", "indexed": false },
+                  { "name": "newMessage", "type": "string", "indexed": false }
+                ]
+              }
+            ]
+          }
+        ],
+        "arguments": [
+          {
+            "name": "message",
+            "type": "string",
+            "description": "The new greeting message to store on-chain",
+            "ui": {
+              "widget": "text",
+              "placeholder": "Enter your greeting message...",
+              "helpText": "This message will be stored on the blockchain and can be read by anyone.",
+              "validation": {
+                "regex": "^.{1,256}$",
+                "errorMessage": "Message must be between 1 and 256 characters"
+              }
+            }
+          }
+        ]
+      }
+    ]
+  }
+]

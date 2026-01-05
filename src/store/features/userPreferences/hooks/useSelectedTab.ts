@@ -7,7 +7,7 @@ export const useSelectedTab = () => {
 
     const dispatch = useAppDispatch();
 
-    const selectTab = useCallback((tab: string | number) => {
+    const selectTab = useCallback((tab: string) => {
         dispatch(setSelectedTab({ id: tab }));
     }, [dispatch]);
 

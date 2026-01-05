@@ -9,6 +9,7 @@ import { TabsSkeleton } from '@/components/Skeletons';
 import { Add } from '@mui/icons-material';
 import useTabs from '@/store/features/tabs/hooks/useTabs';
 import useSelectedTab from '@/store/features/userPreferences/hooks/useSelectedTab';
+import { debugLog } from '@/utils/debug';
 
 const Home: NextPage = () => {
   const [mounted, setMounted] = useState(false);
@@ -24,39 +25,17 @@ const Home: NextPage = () => {
     removeTab
   } = useTabs();
 
-  const [tabId, setTabId] = useState<string | undefined | number>('new');
-
   useEffect(() => {
     setMounted(true);
   }, []);
 
 
 
-  const handleTabIdUpdate = useCallback(() => {
-    const targetTab = tabs.filter(tab => tab.id === selectedTab);
-
-    if (targetTab.length > 0) {
-      setTabId(tabs.indexOf(targetTab[0]));
-    } else if (tabs.length > 0) {
-      // selectedTab doesn't match any tab - select the first available tab
-      setTabId(0);
-      setTab(tabs[0].id);
-    } else {
-      setTabId('new');
-    }
-  }, [selectedTab, tabs, setTab])
-
   const handleNewTab = useCallback(() => {
     const newId = newTab();  // newTab now returns UUID string
     setTab(newId);  // Set selected tab to the new tab's UUID directly
-    console.log('handleNewTab', newId);
+    debugLog('handleNewTab', newId);
   }, [newTab, setTab]);
-
-
-  useEffect(() => {
-    handleTabIdUpdate();
-    console.log('effect:handleTabIdUpdate');
-  }, [handleTabIdUpdate]);
 
 
 
@@ -73,38 +52,35 @@ const Home: NextPage = () => {
           sx={{
             mb: 4
           }}
-          value={tabId}
+          value={selectedTab === 'new' ? false : selectedTab}
           onChange={(e, v) => {
-            console.log(v);
-            tabs[v] && setTab(tabs[v].id);
+            e.preventDefault();
+            if (typeof v === 'string') setTab(v);
           }}
           variant="scrollable"
           scrollButtons="auto"
         >
 
           {typeof tabs !== 'undefined' && tabs.map((tab, index) => {
-            return <TabWithClose key={index} label={
-              tab.title
-            }
-              canBeClosed={tabs.length > 1}
-              onClickCloseIcon={() => {
+            return (
+              <TabWithClose
+                key={tab.id}
+                value={tab.id}
+                label={tab.title}
+                canBeClosed={tabs.length > 1}
+                onClickCloseIcon={() => {
+                  const nextId = (() => {
+                    if (tabs.length <= 1) return 'new';
+                    if (index > 0) return tabs[index - 1].id;
+                    return tabs[index + 1]?.id ?? 'new';
+                  })();
 
-                console.log('removeTab', tab.id);
-                console.log('index', index);
-
-                const leftTab = Object.keys(tabs).length > 0 ? Object.keys(tabs)[index - 1] : undefined;
-                const rightTab = Object.keys(tabs).length > 0 ? Object.keys(tabs)[index + 1] : undefined;
-                const navigateTo: number | string = leftTab ? leftTab : rightTab ? rightTab : 'new';
-                setTabId(
-                  navigateTo
-                );
-                removeTab(tab.id);
-                // @ts-ignore
-                setTab(tabs[navigateTo].id);
-                handleTabIdUpdate();
-              }}
-              tabId={tab.id}
-            />
+                  removeTab(tab.id);
+                  setTab(nextId);
+                }}
+                tabId={tab.id}
+              />
+            );
           })}
           <Tab
             sx={{

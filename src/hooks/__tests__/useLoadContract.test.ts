@@ -31,6 +31,12 @@ jest.mock('@/hooks/useLocalAbis', () => ({
   getLocalAbi: jest.fn(),
 }));
 
+// Mock debug helpers
+jest.mock('@/utils/debug', () => ({
+  debugLog: jest.fn(),
+  debugError: jest.fn(),
+}));
+
 // Mock viem functions
 jest.mock('viem', () => ({
   isAddress: jest.fn((addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr)),
@@ -47,6 +53,7 @@ import { useWalletClient, usePublicClient } from 'wagmi';
 import { getMetadataFromAddress, MetadataSources } from '@ethereum-sourcify/contract-call-decoder';
 import { getLocalAbi } from '@/hooks/useLocalAbis';
 import { isAddress, getContract } from 'viem';
+import { debugError } from '@/utils/debug';
 
 // Test store factory
 function createTestStore() {
@@ -66,7 +73,7 @@ function createTestStore() {
 function createWrapper() {
   const store = createTestStore();
   return function Wrapper({ children }: { children: React.ReactNode }) {
-    return React.createElement(Provider, { store, children });
+    return React.createElement(Provider as any, { store }, children);
   };
 }
 
@@ -174,8 +181,6 @@ describe('useLoadContract', () => {
         { wrapper: createWrapper() }
       );
 
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
-
       let loadResult: any;
       await act(async () => {
         loadResult = await result.current.loadContract(validAddress, mockAbi);
@@ -183,9 +188,7 @@ describe('useLoadContract', () => {
 
       expect(loadResult).toBe(false);
       expect(result.current.loadingState).toBe('contract-error');
-      expect(consoleSpy).toHaveBeenCalled();
-
-      consoleSpy.mockRestore();
+      expect(debugError).toHaveBeenCalled();
     });
   });
 

@@ -1,5 +1,7 @@
 'use client';
 
+import { debugError } from './debug';
+
 import type { PublicClient, Address } from 'viem';
 
 export type ProxyType =
@@ -217,7 +219,7 @@ export async function detectProxy(
 
     return result;
   } catch (error) {
-    console.error('Error detecting proxy:', error);
+    debugError('Error detecting proxy:', error);
     return result;
   }
 }

@@ -13,6 +13,8 @@ const nextConfig = {
             encoding: false,
             tls: false,
             lokijs: false,
+            bufferutil: false,
+            'utf-8-validate': false,
         };
 
         return config;

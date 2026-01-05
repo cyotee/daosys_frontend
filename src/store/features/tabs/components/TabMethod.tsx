@@ -8,12 +8,15 @@ import { ArrowRight, ExpandMore, ExpandOutlined } from "@mui/icons-material";
 import { Box as CustomBox } from "@/components/Box";
 import { AbiEncoder } from "@/components/AbiEncoder";
 import { useHistory } from "../../history/hooks/useHistory";
+import { debugLog } from "@/utils/debug";
 
 
 export type TabMethodProps = {
     details: AbiFunction;
+    displayName?: string;
+    contractListMeta?: any;
     onCall: (
-        params: { [key: string]: string },
+        params: { [key: string]: any },
         stateSetCallback: React.Dispatch<React.SetStateAction<{ [key: string]: string; }>>,
         setErrorCallback: React.Dispatch<React.SetStateAction<string>>,
         setTxHash: React.Dispatch<React.SetStateAction<string | undefined>>,
@@ -22,14 +25,15 @@ export type TabMethodProps = {
     ) => void;
 };
 
-export const TabMethod: FC<TabMethodProps> = ({ details, onCall }) => {
+export const TabMethod: FC<TabMethodProps> = ({ details, onCall, displayName, contractListMeta }) => {
 
     // Initialize the inputs state based on the details.inputs
     const initialInputs = useMemo(() => {
         return details.inputs.reduce((acc, param) => {
-            acc[param.name as string] = '';
+            const key = param.name as string;
+            acc[key] = '';
             return acc;
-        }, {} as { [key: string]: string });
+        }, {} as { [key: string]: any });
     }, [details.inputs]);
 
 
@@ -61,6 +65,26 @@ export const TabMethod: FC<TabMethodProps> = ({ details, onCall }) => {
             [name]: value,
         }));
     };
+
+    const argumentUiByName = useMemo(() => {
+        const ui: Record<string, any> = {};
+        const args = contractListMeta?.arguments;
+        if (!Array.isArray(args)) return ui;
+
+        for (const arg of args) {
+            if (arg && typeof arg === 'object') {
+                // group form: { group, fields: [...] }
+                if (Array.isArray(arg.fields)) {
+                    for (const f of arg.fields) {
+                        if (f?.name) ui[String(f.name)] = f.ui || {};
+                    }
+                } else if (arg.name) {
+                    ui[String(arg.name)] = arg.ui || {};
+                }
+            }
+        }
+        return ui;
+    }, [contractListMeta]);
 
     const handleOptionsUpdate = (newOptions: { [key: string]: string | number | bigint }) => {
         const repaceOptions = ({
@@ -95,7 +119,7 @@ export const TabMethod: FC<TabMethodProps> = ({ details, onCall }) => {
                                 mr: 2,
                             }} />
                             <Typography variant="h6">
-                                {details.name}
+                                {displayName || details.name}
                             </Typography>
                         </Box>
                     </Grid>
@@ -112,6 +136,11 @@ export const TabMethod: FC<TabMethodProps> = ({ details, onCall }) => {
                     <Divider />
 
                     {details.inputs.length > 0 && details.inputs.map((param, index) => {
+                        const ui = argumentUiByName[param.name as string] || {};
+                        const widget = ui.widget;
+                        const placeholder = ui.placeholder;
+                        const helpText = ui.helpText;
+                        const isBool = String(param.type).trim() === 'bool';
                         return (
                             <Box component="div" key={index} sx={{
                                 mb: 2,
@@ -122,24 +151,47 @@ export const TabMethod: FC<TabMethodProps> = ({ details, onCall }) => {
                                 }}>
                                     {param.name} ({param.type})
                                 </Typography>
-                                <TextField
-                                    key={index}
+                                {helpText ? (
+                                    <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                        {helpText}
+                                    </Typography>
+                                ) : null}
 
-                                    variant="outlined"
-                                    value={inputs[param.name as string]}
-                                    onChange={(e) => {
-                                        handleInputChange(param.name as string, e.target.value);
-                                    }}
-                                />
+                                {(widget === 'checkbox' || isBool) ? (
+                                    <FormControlLabel
+                                        control={
+                                            <Switch
+                                                checked={Boolean(inputs[param.name as string]) && String(inputs[param.name as string]).toLowerCase() !== 'false'}
+                                                onChange={(e) => {
+                                                    setInputs((prev) => ({
+                                                        ...prev,
+                                                        [param.name as string]: e.target.checked,
+                                                    }));
+                                                }}
+                                            />
+                                        }
+                                        label={placeholder || ''}
+                                    />
+                                ) : (
+                                    <TextField
+                                        key={index}
+                                        variant="outlined"
+                                        value={inputs[param.name as string]}
+                                        placeholder={placeholder}
+                                        onChange={(e) => {
+                                            handleInputChange(param.name as string, e.target.value);
+                                        }}
+                                    />
+                                )}
                                 <AbiEncoder onResultCallback={(result) => {
-                                    console.log(result);
+                                    debugLog(result);
                                     handleInputChange(param.name as string, result);
                                 }}
                                     onOpen={() => {
-                                        console.log('open');
+                                        debugLog('open');
                                     }}
                                     onClose={() => {
-                                        console.log('close');
+                                        debugLog('close');
                                     }}
                                 />
 

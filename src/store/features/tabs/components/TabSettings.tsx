@@ -1,9 +1,11 @@
+import { debugLog } from "@/utils/debug";
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { Close, Settings } from '@mui/icons-material';
-import { IconButton, Input, Popover, TextField, Typography } from '@mui/material';
+import { FormControl, IconButton, MenuItem, Popover, Select, TextField, Typography } from '@mui/material';
 import React, { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { setTabTitle as reduxSetTabTitle } from '../tabsSlice';
+import { setTabTitle as reduxSetTabTitle, setTabUiMode as reduxSetTabUiMode, setTabContractListId as reduxSetTabContractListId } from '../tabsSlice';
 import throttle from "lodash.throttle"
+import { useContractLists } from '@/hooks/useContractLists';
 
 export type TabSettingsProps = {
     tabId: string | undefined | number;
@@ -32,6 +34,16 @@ export const TabSettings: FC<TabSettingsProps> = (props: TabSettingsProps) => {
         state => state.tabsSlice.tabs.find(tab => tab.id === props.tabId)?.title
     );
 
+    const tabUiMode = useAppSelector(
+        state => state.tabsSlice.tabs.find(tab => tab.id === props.tabId)?.uiMode
+    );
+
+    const tabContractListId = useAppSelector(
+        state => state.tabsSlice.tabs.find(tab => tab.id === props.tabId)?.contractListId
+    );
+
+    const { index: contractListsIndex } = useContractLists();
+
     useEffect(() => {
         if (!tabTitle) return;
         if (!refInput.current) return;
@@ -53,6 +65,24 @@ export const TabSettings: FC<TabSettingsProps> = (props: TabSettingsProps) => {
     );
 
     const setTabTitle = useCallback(throttledSetTabTitle, [throttledSetTabTitle]);
+
+    const setTabUiMode = useCallback((uiMode: 'auto' | 'abi' | 'contractlist') => {
+        dispatch(
+            reduxSetTabUiMode({
+                id: props.tabId,
+                uiMode,
+            })
+        );
+    }, [dispatch, props.tabId]);
+
+    const setTabContractListId = useCallback((contractListId: string | undefined) => {
+        dispatch(
+            reduxSetTabContractListId({
+                id: props.tabId,
+                contractListId,
+            })
+        );
+    }, [dispatch, props.tabId]);
 
 
     const open = Boolean(anchorEl);
@@ -87,10 +117,36 @@ export const TabSettings: FC<TabSettingsProps> = (props: TabSettingsProps) => {
 
                 <TextField type='text' label="Change Tab Name" placeholder="Tab name" value={tabTitle || ''}
                     onChange={(e) => {
-                        console.log(e.target.value)
+                        debugLog(e.target.value);
                         setTabTitle(e.target.value);
                     }}
                 />
+
+                <Typography sx={{ p: 2, pb: 1 }}>UI Source</Typography>
+                <FormControl sx={{ p: 2, pt: 0, width: 320 }} size="small">
+                    <Select
+                        value={tabUiMode || 'auto'}
+                        onChange={(e) => setTabUiMode(e.target.value as 'auto' | 'abi' | 'contractlist')}
+                    >
+                        <MenuItem value="auto">Auto (default)</MenuItem>
+                        <MenuItem value="abi">ABI only</MenuItem>
+                        <MenuItem value="contractlist">Contractlist</MenuItem>
+                    </Select>
+                </FormControl>
+
+                <Typography sx={{ p: 2, pb: 1 }}>Contractlist</Typography>
+                <FormControl sx={{ p: 2, pt: 0, width: 320 }} size="small">
+                    <Select
+                        value={tabContractListId || ''}
+                        displayEmpty
+                        onChange={(e) => setTabContractListId((e.target.value as string) || undefined)}
+                    >
+                        <MenuItem value="">(Auto select)</MenuItem>
+                        {(contractListsIndex?.items || []).map((item) => (
+                            <MenuItem key={item.id} value={item.id}>{item.id}</MenuItem>
+                        ))}
+                    </Select>
+                </FormControl>
 
             </Popover>
         </>

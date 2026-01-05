@@ -15,11 +15,12 @@ import { injectedWallet } from '@rainbow-me/rainbowkit/wallets';
 import { Provider } from 'react-redux';
 import { rollux } from '@/networks/rollux';
 import store from '@/store';
-import { ThemeProvider } from '@mui/material';
+import { CssBaseline, ThemeProvider } from '@mui/material';
 import theme from './theme';
 import { NotificationProvider } from '@/components/Notifications';
 import { createPublicClient, custom, http } from 'viem';
 import type { Chain, EIP1193Provider } from 'viem';
+import { darkTheme } from '@rainbow-me/rainbowkit';
 
 // Extend Window interface for ethereum provider
 declare global {
@@ -87,8 +88,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <Provider store={store}>
             <WagmiConfig config={wagmiConfig}>
                 <ThemeProvider theme={theme}>
+                    <CssBaseline />
                     <NotificationProvider>
-                        <RainbowKitProvider chains={[...chains]} appInfo={demoAppInfo}>
+                        <RainbowKitProvider
+                            chains={[...chains]}
+                            appInfo={demoAppInfo}
+                            theme={darkTheme()}
+                        >
                             {mounted && children}
                         </RainbowKitProvider>
                     </NotificationProvider>

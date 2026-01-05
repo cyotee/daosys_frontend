@@ -5,7 +5,7 @@ export interface SelectProps extends MdSelectProps {
 }
 
 export const Select = styled(MdSelect)<SelectProps>(({ theme }) => ({
-    backgroundColor: theme.palette.grey[100],
+    backgroundColor: theme.palette.background.paper,
 }));
 
 export default Select;

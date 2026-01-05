@@ -1,3 +1,4 @@
+import { debugError } from '@/utils/debug';
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { useWalletClient, usePublicClient } from "wagmi";
 import { MetadataSources, getMetadataFromAddress } from "@ethereum-sourcify/contract-call-decoder";
@@ -90,7 +91,7 @@ export const useLoadContract = (
             setContract(contractInstance as ContractInstance);
             return contractInstance;
         } catch (e) {
-            console.error('Failed to load contract:', e);
+            debugError('Failed to load contract:', e);
             setLoadingState('contract-error');
             return false;
         }
@@ -110,7 +111,7 @@ export const useLoadContract = (
             await loadContract(addressToLoad, abi as Abi);
             return true;
         } catch (e) {
-            console.error('Failed to load local ABI:', e);
+            debugError('Failed to load local ABI:', e);
             setLoadingState('abi-error');
             return false;
         }
@@ -146,7 +147,7 @@ export const useLoadContract = (
                 await loadContract(contractAddress, abi);
             }
         } catch (e) {
-            console.error('Failed to load contract metadata:', e);
+            debugError('Failed to load contract metadata:', e);
             setLoadingState('metadata-not-found');
         }
     }, [client, contractAddress, loadContract]);

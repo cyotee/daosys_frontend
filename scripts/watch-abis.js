@@ -6,7 +6,7 @@
  * whenever contract artifacts change.
  *
  * Usage:
- *   node scripts/watch-abis.js [--project-dir=<path>]
+ *   node scripts/watch-abis.js [--project-dir=<path>] [--out-dir=<path>]
  */
 
 const fs = require('fs');
@@ -99,11 +99,12 @@ function detectProjectConfig(startDir) {
   return null;
 }
 
-function runBundler(projectDir) {
+function runBundler(projectDir, outDir) {
   const { spawn } = require('child_process');
   const bundlerPath = path.join(__dirname, 'bundle-local-abis.js');
 
   const args = ['--project-dir=' + projectDir];
+  if (outDir) args.push('--out-dir=' + outDir);
   const proc = spawn(process.execPath, [bundlerPath, ...args], {
     stdio: 'inherit',
     cwd: __dirname
@@ -121,8 +122,11 @@ function runBundler(projectDir) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const projectDir = args['project-dir'] || process.env.PWD || process.cwd();
+  const outDir = args['out-dir'] || null;
 
-  const config = detectProjectConfig(projectDir);
+  const config = outDir
+    ? { type: 'override', projectDir, outDir: path.resolve(outDir) }
+    : detectProjectConfig(projectDir);
 
   if (!config) {
     console.error('No Foundry or Hardhat project found. Cannot watch.');
@@ -135,7 +139,7 @@ async function main() {
   // Run initial bundle
   console.log('\nInitial bundle...');
   try {
-    await runBundler(projectDir);
+    await runBundler(projectDir, outDir);
   } catch (e) {
     console.error('Initial bundle failed:', e.message);
   }
@@ -160,7 +164,7 @@ async function main() {
       console.log('\nArtifacts changed, rebuilding...');
 
       try {
-        await runBundler(projectDir);
+        await runBundler(projectDir, outDir);
         console.log('Rebuild complete.');
       } catch (e) {
         console.error('Rebuild failed:', e.message);

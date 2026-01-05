@@ -6,6 +6,8 @@ export type Tab = {
     id: string,
     title: string,
     contractAddress: string,
+    uiMode?: 'auto' | 'abi' | 'contractlist',
+    contractListId?: string,
 }
 
 export const initialState: {
@@ -35,10 +37,22 @@ export const tabsSlice = createSlice({
             if (tab) {
                 tab.contractAddress = action.payload.contractAddress;
             }
+        },
+        setTabUiMode: (state, action) => {
+            const tab = state.tabs.find(tab => tab.id === action.payload.id);
+            if (tab) {
+                tab.uiMode = action.payload.uiMode;
+            }
+        },
+        setTabContractListId: (state, action) => {
+            const tab = state.tabs.find(tab => tab.id === action.payload.id);
+            if (tab) {
+                tab.contractListId = action.payload.contractListId;
+            }
         }
     }
 });
 
-export const { addTab, removeTab, setTabTitle, setTabContractAddress } = tabsSlice.actions;
+export const { addTab, removeTab, setTabTitle, setTabContractAddress, setTabUiMode, setTabContractListId } = tabsSlice.actions;
 
 export default tabsSlice.reducer;

@@ -1,0 +1,22 @@
+[
+  {
+    "chainId": 31337,
+    "hookName": "OperableGreeter",
+    "name": "Operable Greeter",
+    "functions": [
+      {
+        "getMessage": "Get Message"
+      },
+      {
+        "setMessage": "Set Message",
+        "arguments": [
+          {
+            "name": "message",
+            "type": "string",
+            "description": "Message"
+          }
+        ]
+      }
+    ]
+  }
+]

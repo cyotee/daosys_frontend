@@ -16,7 +16,6 @@ export const useTabs = () => {
     }, [dispatch]);
 
     const removeTab = useCallback((id: string) => {
-        //@ts-ignore
         dispatch(reduxRemoveTab({ id }));
     }, [dispatch]);
 

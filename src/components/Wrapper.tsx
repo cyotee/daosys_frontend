@@ -86,8 +86,8 @@ export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
             <Box
                 component="main"
                 sx={{
-                    backgroundColor: (theme) => theme.palette.grey[100],
-                    boxShadow: '2px 2px 2px 2px #000066',
+                    backgroundColor: (theme) => theme.palette.background.default,
+                    boxShadow: (theme) => theme.shadows[1],
                     flexGrow: 1,
                     height: '100vh',
                     overflow: 'auto',

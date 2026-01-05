@@ -24,6 +24,7 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "bundle-abis": "node scripts/bundle-local-abis.js",
+    "bundle-contractlists": "node scripts/bundle-contractlists.js",
     "watch-abis": "node scripts/watch-abis.js",
     "export": "STATIC_EXPORT=true next build",
     "dev:local": "node bin/cli.js --local dev",

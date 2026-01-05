@@ -7,6 +7,7 @@ import { Box as MBox } from "@mui/material";
 import useSelectedTab from "../../userPreferences/hooks/useSelectedTab";
 import { useSelectedContract } from "../../contracts/hooks/useSelectedContract";
 import { CheckCircle, Info } from "@mui/icons-material";
+import { debugLog } from "@/utils/debug";
 
 export type TabMethodEventsProps = {
     txHash: string;
@@ -77,7 +78,7 @@ export const TabMethodEvents: FC<TabMethodEventsProps> = ({ txHash }) => {
     });
 
     useEffect(() => {
-        console.log(data, selectedContractABI);
+        debugLog(data, selectedContractABI);
 
         if (data?.logs && selectedContractABI) {
             const decodedData: { [key: string]: readonly [] | {} } = {};
