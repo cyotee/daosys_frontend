@@ -78,13 +78,21 @@ export const useLoadContract = (
                 return false;
             }
 
+            if (!client) {
+                setLoadingState('contract-error');
+                return false;
+            }
+
             setLoadingState('loading-contract');
+
+            const contractClient = wallet.data
+                ? { public: client, wallet: wallet.data }
+                : client;
 
             const contractInstance = getContract({
                 address: addressToLoad as Address,
                 abi: abi,
-                walletClient: wallet.data ?? undefined,
-                publicClient: client,
+                client: contractClient,
             });
 
             setLoadingState('contract-loaded');
@@ -119,6 +127,11 @@ export const useLoadContract = (
 
 
     const loadContractMetadata = useCallback(async (metadataSource: MetadataSources, chainId: number) => {
+
+        if (!client) {
+            setLoadingState('metadata-not-found');
+            return;
+        }
 
         const metadataFetchPayload = {
             address: contractAddress,

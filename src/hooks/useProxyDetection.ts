@@ -29,6 +29,12 @@ export function useProxyDetection(): UseProxyDetectionResult {
       return null;
     }
 
+    if (!client) {
+      setError(new Error('Wallet client not ready'));
+      setDetectionState('error');
+      return null;
+    }
+
     setDetectionState('detecting');
     setError(null);
 

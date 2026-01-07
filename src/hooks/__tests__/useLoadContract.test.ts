@@ -150,8 +150,7 @@ describe('useLoadContract', () => {
       expect(getContract).toHaveBeenCalledWith({
         address: validAddress,
         abi: mockAbi,
-        walletClient: undefined,
-        publicClient: expect.anything(),
+        client: expect.anything(),
       });
       expect(result.current.loadingState).toBe('contract-loaded');
       expect(result.current.contract).toBeTruthy();

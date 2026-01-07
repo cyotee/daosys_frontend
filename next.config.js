@@ -7,6 +7,11 @@ const nextConfig = {
     images: process.env.STATIC_EXPORT === 'true' ? { unoptimized: true } : undefined,
 
     webpack: (config) => {
+        config.resolve.alias = {
+            ...(config.resolve.alias || {}),
+            '@react-native-async-storage/async-storage': false,
+        };
+
         config.resolve.fallback = {
             fs: false,
             net: false,

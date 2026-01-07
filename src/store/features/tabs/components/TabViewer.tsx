@@ -301,10 +301,17 @@ export const TabViewer: FC<TabViewerProps> = (props: TabViewerProps) => {
         }
         const addressTyped = addr as Address;
 
+        const publicClient = client;
+
         if (mode === "read") {
             debugLog(callParams)
             try {
-                const results = await client.readContract({
+                if (!publicClient) {
+                    setErrorCallback('Public client is not available');
+                    return;
+                }
+
+                const results = await publicClient.readContract({
                     // @ts-ignore
                     address: addressTyped,
                     abi: contract?.abi,
@@ -351,11 +358,17 @@ export const TabViewer: FC<TabViewerProps> = (props: TabViewerProps) => {
 
 
                 const results = staticCall
-                    ? await client.simulateContract({
-                        // @ts-ignore
-                        ..._paramsCall,
-                        account: wallet.account,
-                    })
+                    ? await (async () => {
+                        if (!publicClient) {
+                            setErrorCallback('Public client is not available');
+                            throw new Error('Public client is not available');
+                        }
+                        return publicClient.simulateContract({
+                            // @ts-ignore
+                            ..._paramsCall,
+                            account: wallet.account,
+                        });
+                    })()
                     : await wallet.writeContract(
                         // @ts-ignore
                         _paramsCall,
@@ -364,8 +377,8 @@ export const TabViewer: FC<TabViewerProps> = (props: TabViewerProps) => {
                 setErrorCallback('');
 
                 if (staticCall) {
-                    const resultObj = results as SimulateContractReturnType;
-                    stateSetCallback(formatResultMap((resultObj as any).result));
+                    const resultValue = (results as { result?: unknown } | undefined)?.result;
+                    stateSetCallback(formatResultMap(resultValue));
                 } else {
 
                     addWrite(

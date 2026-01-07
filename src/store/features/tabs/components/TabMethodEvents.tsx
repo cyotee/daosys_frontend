@@ -1,7 +1,7 @@
 import { Button, Grid, Table, TableBody, TableCell, TableRow, Typography } from "@mui/material";
 import React, { FC, useState, useEffect, useCallback } from "react";
 import { Transaction, TransactionReceipt, decodeEventLog } from "viem";
-import { usePublicClient, useWaitForTransaction } from "wagmi";
+import { useWaitForTransactionReceipt } from "wagmi";
 import { Box } from "@/components/Box";
 import { Box as MBox } from "@mui/material";
 import useSelectedTab from "../../userPreferences/hooks/useSelectedTab";
@@ -72,9 +72,8 @@ export const TabMethodEvents: FC<TabMethodEventsProps> = ({ txHash }) => {
 
     const [decodedData, setDecodedData] = useState<{ [key: string]: readonly [] | {} }>({});
 
-    const { data, isFetched, isError } = useWaitForTransaction({
-        // @ts-ignore
-        hash: txHash,
+    const { data, isFetched, isError } = useWaitForTransactionReceipt({
+        hash: txHash as `0x${string}`,
     });
 
     useEffect(() => {
@@ -86,14 +85,24 @@ export const TabMethodEvents: FC<TabMethodEventsProps> = ({ txHash }) => {
 
 
             data.logs.forEach((log) => {
-                const decoded = decodeEventLog({
-                    abi: selectedContractABI,
-                    data: log.data,
-                    topics: log.topics,
-                    strict: false,
-                });
+                let decoded: unknown;
+                try {
+                    decoded = decodeEventLog({
+                        abi: selectedContractABI,
+                        data: log.data,
+                        topics: log.topics,
+                        strict: false,
+                    });
+                } catch {
+                    return;
+                }
 
-                decodedData[decoded.eventName] = decoded.args;
+                const decodedEventName = (decoded as { eventName?: unknown })?.eventName;
+                const decodedArgs = (decoded as { args?: unknown })?.args;
+
+                if (typeof decodedEventName === 'string' && decodedArgs !== undefined) {
+                    decodedData[decodedEventName] = decodedArgs as unknown as readonly [] | {};
+                }
             })
 
             setDecodedData(decodedData);

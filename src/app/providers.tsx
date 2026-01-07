@@ -3,31 +3,24 @@
 import * as React from 'react';
 import {
     RainbowKitProvider,
-    connectorsForWallets,
 } from '@rainbow-me/rainbowkit';
 
-import { createConfig, mainnet, WagmiConfig } from 'wagmi';
+import { createConfig, WagmiConfig } from 'wagmi';
+import { injected } from 'wagmi/connectors';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
     goerli,
     foundry,
+    mainnet,
 } from 'wagmi/chains';
-import { injectedWallet } from '@rainbow-me/rainbowkit/wallets';
 import { Provider } from 'react-redux';
 import { rollux } from '@/networks/rollux';
 import store from '@/store';
 import { CssBaseline, ThemeProvider } from '@mui/material';
 import theme from './theme';
 import { NotificationProvider } from '@/components/Notifications';
-import { createPublicClient, custom, http } from 'viem';
-import type { Chain, EIP1193Provider } from 'viem';
+import { http } from 'viem';
 import { darkTheme } from '@rainbow-me/rainbowkit';
-
-// Extend Window interface for ethereum provider
-declare global {
-    interface Window {
-        ethereum?: EIP1193Provider;
-    }
-}
 
 // Define supported chains - wallet must be on one of these networks
 const chains = [
@@ -38,67 +31,45 @@ const chains = [
 ] as const;
 
 // Map chain IDs to chain configs for lookup
-const chainById = new Map<number, Chain>(chains.map(c => [c.id, c as Chain]));
-
 const demoAppInfo = {
     appName: 'DaoSYS test UI',
 };
 
-const connectors = connectorsForWallets([
-    {
-        groupName: 'Recommended',
-        wallets: [
-            injectedWallet({ chains: [...chains] }),
-        ],
-    },
-]);
+const connectors = [injected()];
 
-// Create a public client that uses the wallet's injected provider (window.ethereum)
-// Falls back to the chain's default RPC only if no wallet is available
-const getPublicClient = ({ chainId }: { chainId?: number }) => {
-    const chain = chainId ? chainById.get(chainId) : chains[0];
-    if (!chain) {
-        throw new Error(`Unsupported chain: ${chainId}`);
-    }
+type ChainId = (typeof chains)[number]['id'];
 
-    // Use the wallet's injected provider if available
-    if (typeof window !== 'undefined' && window.ethereum) {
-        return createPublicClient({
-            chain,
-            transport: custom(window.ethereum),
-        });
-    }
-    // Fallback for SSR or when no wallet is available
-    return createPublicClient({
-        chain,
-        transport: http(),
-    });
-};
+const transports = Object.fromEntries(
+    chains.map((c) => [c.id, http(c.rpcUrls.default.http[0])])
+) as Record<ChainId, ReturnType<typeof http>>;
 
 const wagmiConfig = createConfig({
-    autoConnect: true,
     connectors,
-    publicClient: getPublicClient,
+    chains,
+    ssr: true,
+    transports,
 });
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const [mounted, setMounted] = React.useState(false);
+    const [queryClient] = React.useState(() => new QueryClient());
     React.useEffect(() => setMounted(true), []);
     return (
         <Provider store={store}>
             <WagmiConfig config={wagmiConfig}>
-                <ThemeProvider theme={theme}>
-                    <CssBaseline />
-                    <NotificationProvider>
-                        <RainbowKitProvider
-                            chains={[...chains]}
-                            appInfo={demoAppInfo}
-                            theme={darkTheme()}
-                        >
-                            {mounted && children}
-                        </RainbowKitProvider>
-                    </NotificationProvider>
-                </ThemeProvider>
+                <QueryClientProvider client={queryClient}>
+                    <ThemeProvider theme={theme}>
+                        <CssBaseline />
+                        <NotificationProvider>
+                            <RainbowKitProvider
+                                appInfo={demoAppInfo}
+                                theme={darkTheme()}
+                            >
+                                {mounted && children}
+                            </RainbowKitProvider>
+                        </NotificationProvider>
+                    </ThemeProvider>
+                </QueryClientProvider>
             </WagmiConfig>
         </Provider>
     );

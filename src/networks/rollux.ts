@@ -1,9 +1,8 @@
-import { Chain } from "wagmi";
+import type { Chain } from "viem/chains";
 
 export const rollux = {
     id: 570,
     name: 'Rollux Mainnet',
-    network: 'rollux',
     nativeCurrency: {
         decimals: 18,
         name: 'Syscoin',

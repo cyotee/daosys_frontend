@@ -55,6 +55,8 @@ const Page: NextPage = () => {
     const [localSelectedName, setLocalSelectedName] = useState<string | undefined>(undefined);
 
     useEffect(() => {
+        if (!client) return;
+
         const getChainId = async () => {
             const chainId = await client.getChainId();
             setChainId(chainId);
@@ -371,7 +373,7 @@ const Page: NextPage = () => {
                     onClick={async () => {
                         setAddress('');
                         setMetadataSource('');
-                        setChainId(await client.getChainId() ?? 1);
+                        setChainId(client ? await client.getChainId() : 1);
                         setManualAbi('');
                         setContractName(undefined);
                         setLocalSelectedName(undefined);
