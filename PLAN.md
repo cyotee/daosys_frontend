@@ -1,203 +1,116 @@
-# Plan: DaoSYS Frontend Improvements
+# DaoSYS Frontend: wagmi migration plan
 
-## Overview
+This file is the “handoff doc” for continuing the wallet stack migration.
 
-This plan covers quality improvements for the DaoSYS Frontend to make it production-ready and maintainable.
+## Current status (as of 2026-01-07)
 
-## Summary
+- Repo: `daosys_frontend` (this folder)
+- Branch: `main`
+- Latest commit: `aa83b90` ("fix(frontend): update wagmi/viem + build fixes")
+- Verified commands:
+  - `npm run build` ✅
+  - `npm test` ✅ (135 tests)
 
-| # | Improvement | Priority | Effort | Status |
-|---|-------------|----------|--------|--------|
-| 1 | Add tests for hooks and utilities | High | Medium | **COMPLETED** |
-| 2 | Fix TypeScript types in useLoadContract | High | Low | **COMPLETED** |
-| 3 | Add error notifications | Medium | Low | **COMPLETED** |
-| 4 | Add loading skeletons | Low | Low | **COMPLETED** |
-| 5 | Implement proxy contract detection | Low | Medium | **COMPLETED** |
-| 6 | Implement IPFS collection export/import | Low | Medium | Pending |
-| 7 | Update dependencies (Wagmi 2.x) | Low | Medium | Pending |
+## What was done
 
----
+Goal was to modernize the app enough to build cleanly and keep RainbowKit compatibility.
 
-## 1. Add Tests for Hooks and Utilities - COMPLETED
+- Upgraded wallet stack to a working set:
+  - `wagmi` pinned to `^2.9.0` (RainbowKit 2.2.10 peer requirement)
+  - `viem` bumped to `^2.0.0`
+  - `@rainbow-me/rainbowkit` pinned to `2.2.10`
+  - Added `@tanstack/react-query` and wrapped app with `QueryClientProvider`
 
-**Priority**: High
-**Effort**: Medium
-**Status**: Completed
+- Fixed Next build blockers and TS strictness issues (not exhaustive):
+  - Guarded `usePublicClient()` returning possibly undefined in a few places.
+  - Updated viem contract instantiation to v2 API: `getContract({ client })`.
+  - Adjusted custom chain typing (`rollux`) to `viem/chains` `Chain` type.
+  - Updated transaction receipt hook usage and event decoding typing.
+  - Added a webpack alias stub for a MetaMask SDK dependency to avoid bundling failure.
 
-### Files Created
+## Key files touched (high signal)
 
-| File | Tests | Coverage |
-|------|-------|----------|
-| `src/utils/__tests__/deploymentMode.test.ts` | 30 tests | 82.5% statements, 80% branches |
-| `src/hooks/__tests__/useLocalAbis.test.ts` | 17 tests | 92.1% statements, 97.4% branches |
-| `src/hooks/__tests__/useLoadContract.test.ts` | 15 tests | 100% statements, 90.3% branches |
-| `scripts/__tests__/bundle-local-abis.test.js` | 31 tests | 66.2% statements, 60.2% branches |
-| `jest.config.js` | - | Jest configuration with TypeScript support |
-| `jest.setup.js` | - | Test setup with mocks for wagmi, fetch, localStorage |
+- `src/app/providers.tsx`
+  - Wagmi config + `QueryClientProvider` + `RainbowKitProvider` integration.
+  - Uses injected connector only (no WalletConnect projectId required).
 
-### Dependencies Added
+- `src/hooks/useLoadContract.ts`
+  - viem v2 `getContract` signature updated.
 
-```bash
-npm install -D jest @testing-library/react @testing-library/jest-dom jest-environment-jsdom ts-jest @types/jest
-```
+- `src/app/connectContract/page.tsx`
+  - Additional null-guards around public client chainId.
 
-### Test Results
+## Why we are not on wagmi v3 yet
 
-**Total: 93 tests passing**
+RainbowKit is the blocker.
 
-### Coverage Thresholds Configured
+- `@rainbow-me/rainbowkit@2.2.10` peers `wagmi` at `^2.9.0`.
+- To use wagmi v3, we must remove/replace RainbowKit (or find a RainbowKit release that supports wagmi v3).
 
-```javascript
-coverageThreshold: {
-  './src/utils/deploymentMode.ts': { branches: 70, functions: 80, lines: 70, statements: 70 },
-  './src/hooks/useLocalAbis.ts': { branches: 50, functions: 50, lines: 50, statements: 50 },
-  './scripts/bundle-local-abis.js': { branches: 40, functions: 60, lines: 50, statements: 50 },
-}
-```
+## Remaining work: switch to wagmi v3 (remove RainbowKit)
 
-### Refactoring for Testability
+This is the recommended sequence to avoid thrash.
 
-- `deploymentMode.ts`: Added optional `LocationLike` parameter for testing without mocking `window.location`
-- `bundle-local-abis.js`: Exported functions for unit testing
-- `useLocalAbis.ts`: Fixed bug where errors weren't properly propagated to hook state
+### Phase 1 — branch + dependency bump
 
----
+1. Create a branch off current `main`.
+   - Suggested: `feat/wagmi-v3-no-rainbowkit`
 
-## 2. Fix TypeScript Types in useLoadContract - COMPLETED
+2. Remove RainbowKit from dependencies.
+   - Remove `@rainbow-me/rainbowkit` from `package.json`.
+   - Remove any RainbowKit CSS import (if present).
 
-**Priority**: High
-**Effort**: Low
-**Status**: Completed
+3. Upgrade wagmi.
+   - Set `wagmi` to `^3.x`.
+   - Align `viem` version to what wagmi v3 expects.
+   - Keep `@tanstack/react-query` (wagmi uses it).
 
-### Changes Made
+Validation gate: `npm test` and `npm run build`.
 
-```typescript
-// Before: @ts-ignore comments throughout
-const contract = getContract({
-    //@ts-ignore
-    address: contractAddress,
-    //@ts-ignore
-    abi: manualAbi,
-    //@ts-ignore
-    walletClient: wallet,
-});
+### Phase 2 — replace RainbowKit UI with minimal in-app wallet UX
 
-// After: Proper types from viem
-import { isAddress, getContract, type Abi, type Address } from "viem";
+RainbowKit provided wallet UX (connect button/modals/recent tx UI). When removed:
 
-type ContractInstance = {
-    address: Address;
-    abi: Abi;
-    read?: Record<string, unknown>;
-    write?: Record<string, unknown>;
-    simulate?: Record<string, unknown>;
-};
+1. Create a minimal wallet component (MUI-based) that:
+   - Lists available connectors (`useConnect()`)
+   - Connects/disconnects (`useConnect()`, `useDisconnect()`)
+   - Displays address + status (`useAccount()`)
+   - Optionally switches chains (`useSwitchChain()`)
 
-const loadContract = useCallback(async (addressToLoad: string, abi: Abi) => {
-    const contractInstance = getContract({
-        address: addressToLoad as Address,
-        abi: abi,
-        walletClient: wallet.data ?? undefined,
-        publicClient: client,
-    });
-    // ...
-}, [wallet.data, client]);
-```
+2. Replace any RainbowKit component usage if it exists in the current app.
+   - Look for: `ConnectButton`, `useConnectModal`, `useAccountModal`, `useChainModal`.
+   - In this codebase, RainbowKit usage is currently centralized in providers; still do a search when doing the actual branch work.
 
-### Files Modified
+Validation gate: manual smoke test in `npm run dev`.
 
-| File | Changes |
-|------|---------|
-| `src/hooks/useLoadContract.ts` | Removed all `@ts-ignore`, added proper types from viem |
+### Phase 3 — wagmi v2 → v3 API updates
 
----
+When bumping to wagmi v3, expect these categories of changes:
 
-## 3. Add Error Notifications - COMPLETED
+- Provider layer changes:
+  - `WagmiConfig` replaced by wagmi v3 provider API.
+  - config creation may require small updates depending on the chosen connectors/transports.
 
-**Priority**: Medium
-**Effort**: Low
-**Status**: Completed
+- Hook/API changes:
+  - Some hook names/signatures changed between v2 and v3.
+  - `usePublicClient()` and friends remain but may have stricter typing.
 
-### Files Created
+- Connector changes:
+  - If using WalletConnect in v3, it will require a projectId and a proper connector setup.
+  - If staying injected-only (MetaMask/etc.), it can remain minimal.
 
-| File | Purpose |
-|------|---------|
-| `src/components/Notifications/NotificationContext.tsx` | Context provider with Snackbar/Alert UI |
-| `src/components/Notifications/index.ts` | Export barrel file |
+Validation gate: `npm run build` must succeed without prerender errors.
 
-### Files Modified
+## Context for the next agent/session
 
-| File | Changes |
-|------|---------|
-| `src/app/providers.tsx` | Wrapped app with NotificationProvider |
-| `src/app/connectContract/page.tsx` | Added notifications for all loading states |
+If you’re resuming this task later, capture/confirm:
 
-### Features Implemented
-
-- **Success notifications**: Contract loaded successfully
-- **Error notifications**: Failed to load contract, invalid ABI JSON
-- **Warning notifications**: Metadata not found (prompts manual ABI entry)
-- **Auto-hide**: 6 seconds for info/success/warning, 10 seconds for errors
-- **Queue system**: Notifications display one at a time
-
-### Usage
-
-```typescript
-import { useNotification } from '@/components/Notifications';
-
-const { notifySuccess, notifyError, notifyWarning, notifyInfo } = useNotification();
-
-notifySuccess('Contract loaded!');
-notifyError('Failed to load contract');
-notifyWarning('Metadata not found');
-```
-
----
-
-## 4. Add Loading Skeletons - COMPLETED
-
-**Priority**: Low
-**Effort**: Low
-**Status**: Completed
-
-### Files Created
-
-| File | Purpose |
-|------|---------|
-| `src/components/Skeletons/PageSkeleton.tsx` | Reusable skeleton components |
-| `src/components/Skeletons/index.ts` | Export barrel file |
-
-### Files Modified
-
-| File | Changes |
-|------|---------|
-| `src/app/page.tsx` | Added `TabsSkeleton` during SSR hydration |
-| `src/app/collections/page.tsx` | Added `CollectionsSkeleton` during SSR hydration |
-| `src/app/connectContract/page.tsx` | Already has loading state (no changes needed) |
-
-### Skeleton Components
-
-- **TabsSkeleton**: Mimics tab bar and content area
-- **CollectionsSkeleton**: Mimics header and table rows
-- **ContractFormSkeleton**: Mimics form fields (available for future use)
-
-### Implementation Pattern
-
-```typescript
-const [mounted, setMounted] = useState(false);
-
-useEffect(() => {
-  setMounted(true);
-}, []);
-
-if (!mounted) {
-  return <TabsSkeleton />;
-}
-```
-
----
-
-## 5. Implement Proxy Contract Detection - COMPLETED
+- The starting commit is `aa83b90`.
+- Confirm current working commands:
+  - `npm run build`
+  - `npm test`
+- The migration goal is wagmi v3, and it implies removing RainbowKit unless RainbowKit supports wagmi v3.
+- Decide upfront whether WalletConnect is required; if yes, you’ll need a `projectId` strategy and connector UX.
 
 **Priority**: Low
 **Effort**: Medium
