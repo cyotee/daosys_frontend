@@ -62,10 +62,47 @@ export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
     const { connect, connectors, isPending } = useConnect();
     const { disconnect } = useDisconnect();
 
+    const [isSafeContext, setIsSafeContext] = React.useState(false);
+
     const [walletMenuAnchor, setWalletMenuAnchor] = React.useState<null | HTMLElement>(null);
     const walletMenuOpen = Boolean(walletMenuAnchor);
 
-    const availableConnectors = connectors.filter(Boolean);
+    React.useEffect(() => {
+        try {
+            const isIframe = window.self !== window.top;
+            const safeDomainRegex = /(^|\.)safe\.global$/;
+
+            let hasSafeReferrer = false;
+            if (document.referrer) {
+                try {
+                    const referrerHost = new URL(document.referrer).hostname;
+                    hasSafeReferrer = safeDomainRegex.test(referrerHost);
+                } catch {
+                    hasSafeReferrer = false;
+                }
+            }
+
+            // Some browsers expose ancestorOrigins for embedded contexts.
+            const ancestorOrigins = (window.location as unknown as { ancestorOrigins?: string[] }).ancestorOrigins;
+            const hasSafeAncestorOrigin = Array.isArray(ancestorOrigins)
+                ? ancestorOrigins.some((origin) => {
+                    try {
+                        return safeDomainRegex.test(new URL(origin).hostname);
+                    } catch {
+                        return false;
+                    }
+                })
+                : false;
+
+            setIsSafeContext(isIframe && (hasSafeReferrer || hasSafeAncestorOrigin));
+        } catch {
+            setIsSafeContext(false);
+        }
+    }, []);
+
+    const availableConnectors = connectors
+        .filter(Boolean)
+        .filter((c) => c.id !== 'safe' || isSafeContext);
     const singleConnector = availableConnectors.length === 1 ? availableConnectors[0] : undefined;
 
     const theme = useTheme();

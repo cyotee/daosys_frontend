@@ -5,8 +5,10 @@ This section is the “handoff doc” for the wallet stack migration.
 ## Current status (as of 2026-01-08)
 
 - Repo: `daosys_frontend` (this folder)
-- Branch: `main` (local working tree currently has uncommitted changes)
-- Base commit: `0c3d84a`
+- Branch: `feat/wagmi-v3`
+- Latest commits:
+  - `55685af` feat(frontend): migrate to wagmi v3
+  - `bd3e84f` feat(frontend): add coinbase & safe wallet connectors
 - Verified commands:
   - `npm test` ✅ (135 tests)
   - `npm run build` ✅
@@ -28,14 +30,6 @@ This section is the “handoff doc” for the wallet stack migration.
   - `WagmiConfig` → `WagmiProvider`
   - `createConfig({ transports })` with `viem` `http(...)`
 
-## Files currently changed (not committed yet)
-
-- `package.json`
-- `package-lock.json` (now synced to wagmi v3 / viem v2)
-- `src/app/layout.tsx`
-- `src/app/providers.tsx`
-- `src/components/Wrapper.tsx`
-
 ## Notes (wagmi v2 → v3)
 
 - wagmi v3 makes connector dependencies optional peer deps.
@@ -48,6 +42,7 @@ This section is the “handoff doc” for the wallet stack migration.
   - Still pending: WalletConnect (requires a projectId + `@walletconnect/ethereum-provider`).
 - UX:
   - Minimal connector picker menu is used for selecting a wallet when connecting.
+  - Guard: Safe connector is hidden unless running inside Safe.
 
 ---
 
