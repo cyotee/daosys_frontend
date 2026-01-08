@@ -3,7 +3,7 @@
 import * as React from 'react';
 
 import { createConfig, WagmiProvider } from 'wagmi';
-import { injected } from 'wagmi/connectors';
+import { coinbaseWallet, injected, safe } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
     goerli,
@@ -26,7 +26,11 @@ const chains = [
     ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [goerli] : []),
 ] as const;
 
-const connectors = [injected()];
+const connectors = [
+    injected(),
+    coinbaseWallet({ appName: 'DaoSYS UI' }),
+    safe({ shimDisconnect: true }),
+];
 
 type ChainId = (typeof chains)[number]['id'];
 

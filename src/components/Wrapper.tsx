@@ -11,7 +11,7 @@ import AppBar from '@/components/AppBar';
 import Button from '@/components/Button';
 import Select from '@/components/Select';
 import { useSelectedCollection } from '@/store/features/userPreferences/hooks/useSelectedCollection'
-import { Divider, Grid, Link, Stack, useMediaQuery, useTheme } from '@mui/material';
+import { Divider, Grid, Link, Menu, MenuItem, Stack, useMediaQuery, useTheme } from '@mui/material';
 import Sidebar, { SidebarLink } from './Sidebar';
 import { Collections, History, HomeMini, House, LinkOff, LinkOutlined, Send, Settings, SwapCalls } from '@mui/icons-material';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
@@ -62,10 +62,27 @@ export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
     const { connect, connectors, isPending } = useConnect();
     const { disconnect } = useDisconnect();
 
-    const injectedConnector = connectors.find((c) => c.id === 'injected') ?? connectors[0];
+    const [walletMenuAnchor, setWalletMenuAnchor] = React.useState<null | HTMLElement>(null);
+    const walletMenuOpen = Boolean(walletMenuAnchor);
+
+    const availableConnectors = connectors.filter(Boolean);
+    const singleConnector = availableConnectors.length === 1 ? availableConnectors[0] : undefined;
 
     const theme = useTheme();
     const matches = useMediaQuery(theme.breakpoints.down('md'));
+
+    const openWalletMenu = (e: React.MouseEvent<HTMLElement>) => {
+        setWalletMenuAnchor(e.currentTarget);
+    };
+
+    const closeWalletMenu = () => {
+        setWalletMenuAnchor(null);
+    };
+
+    const connectWith = (connector: (typeof availableConnectors)[number]) => {
+        closeWalletMenu();
+        connect({ connector });
+    };
 
     return (
         <Box sx={{ display: 'flex' }}>
@@ -93,14 +110,35 @@ export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
                             {address ? `Disconnect (${address.slice(0, 6)}…${address.slice(-4)})` : 'Disconnect'}
                         </Button>
                     ) : (
-                        <Button
-                            onClick={() => injectedConnector && connect({ connector: injectedConnector })}
-                            disabled={!injectedConnector || isPending}
-                            variant="contained"
-                            size="small"
-                        >
-                            Connect Wallet
-                        </Button>
+                        <>
+                            <Button
+                                onClick={(e) => {
+                                    if (singleConnector) connectWith(singleConnector);
+                                    else openWalletMenu(e);
+                                }}
+                                disabled={availableConnectors.length === 0 || isPending}
+                                variant="contained"
+                                size="small"
+                            >
+                                Connect Wallet
+                            </Button>
+                            <Menu
+                                anchorEl={walletMenuAnchor}
+                                open={walletMenuOpen}
+                                onClose={closeWalletMenu}
+                                keepMounted
+                            >
+                                {availableConnectors.map((connector) => (
+                                    <MenuItem
+                                        key={connector.id}
+                                        onClick={() => connectWith(connector)}
+                                        disabled={isPending}
+                                    >
+                                        {connector.name}
+                                    </MenuItem>
+                                ))}
+                            </Menu>
+                        </>
                     )}
 
                 </Toolbar>

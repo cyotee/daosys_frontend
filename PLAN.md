@@ -43,8 +43,11 @@ This section is the “handoff doc” for the wallet stack migration.
 
 ## Remaining work
 
-- Decide whether we need WalletConnect (requires a projectId + connector dependency) or injected-only is sufficient.
-- If this work is ready, commit the above changed files.
+- Wallet connectors:
+  - Added Coinbase Wallet + Safe connectors (in addition to injected).
+  - Still pending: WalletConnect (requires a projectId + `@walletconnect/ethereum-provider`).
+- UX:
+  - Minimal connector picker menu is used for selecting a wallet when connecting.
 
 ---
 
