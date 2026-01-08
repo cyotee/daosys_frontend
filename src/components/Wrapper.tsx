@@ -1,7 +1,6 @@
 'use client'
 
 import React, { FC, useState } from 'react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Box from '@mui/material/Box';
 import Toolbar from '@mui/material/Toolbar';
 import Typography from '@mui/material/Typography';
@@ -15,6 +14,7 @@ import { useSelectedCollection } from '@/store/features/userPreferences/hooks/us
 import { Divider, Grid, Link, Stack, useMediaQuery, useTheme } from '@mui/material';
 import Sidebar, { SidebarLink } from './Sidebar';
 import { Collections, History, HomeMini, House, LinkOff, LinkOutlined, Send, Settings, SwapCalls } from '@mui/icons-material';
+import { useAccount, useConnect, useDisconnect } from 'wagmi';
 
 
 const sidebarLinks: SidebarLink[] = [
@@ -58,6 +58,12 @@ const sidebarLinks: SidebarLink[] = [
 export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
     const { selectedCollection } = useSelectedCollection();
 
+    const { address, isConnected } = useAccount();
+    const { connect, connectors, isPending } = useConnect();
+    const { disconnect } = useDisconnect();
+
+    const injectedConnector = connectors.find((c) => c.id === 'injected') ?? connectors[0];
+
     const theme = useTheme();
     const matches = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -77,8 +83,25 @@ export const Wrapper: FC<{ children: React.ReactNode }> = ({ children }) => {
                         DaoSYS UI
                     </Typography>
 
-
-                    <ConnectButton />
+                    {isConnected ? (
+                        <Button
+                            onClick={() => disconnect()}
+                            disabled={isPending}
+                            variant="contained"
+                            size="small"
+                        >
+                            {address ? `Disconnect (${address.slice(0, 6)}…${address.slice(-4)})` : 'Disconnect'}
+                        </Button>
+                    ) : (
+                        <Button
+                            onClick={() => injectedConnector && connect({ connector: injectedConnector })}
+                            disabled={!injectedConnector || isPending}
+                            variant="contained"
+                            size="small"
+                        >
+                            Connect Wallet
+                        </Button>
+                    )}
 
                 </Toolbar>
             </AppBar>

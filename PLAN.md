@@ -1,116 +1,54 @@
-# DaoSYS Frontend: wagmi migration plan
+# DaoSYS Frontend: Wallet Stack Migration (wagmi v3)
 
-This file is the “handoff doc” for continuing the wallet stack migration.
+This section is the “handoff doc” for the wallet stack migration.
 
-## Current status (as of 2026-01-07)
+## Current status (as of 2026-01-08)
 
 - Repo: `daosys_frontend` (this folder)
-- Branch: `main`
-- Latest commit: `aa83b90` ("fix(frontend): update wagmi/viem + build fixes")
+- Branch: `main` (local working tree currently has uncommitted changes)
+- Base commit: `0c3d84a`
 - Verified commands:
-  - `npm run build` ✅
   - `npm test` ✅ (135 tests)
+  - `npm run build` ✅
 
-## What was done
+## What is done
 
-Goal was to modernize the app enough to build cleanly and keep RainbowKit compatibility.
+- Migrated to wagmi v3 (and aligned deps):
+  - `wagmi`: `^3.0.0`
+  - `viem`: `^2.0.0`
+  - `@tanstack/react-query`: `^5.0.0`
+  - TypeScript bumped to `^5.7.3` (wagmi v3 recommended minimum)
 
-- Upgraded wallet stack to a working set:
-  - `wagmi` pinned to `^2.9.0` (RainbowKit 2.2.10 peer requirement)
-  - `viem` bumped to `^2.0.0`
-  - `@rainbow-me/rainbowkit` pinned to `2.2.10`
-  - Added `@tanstack/react-query` and wrapped app with `QueryClientProvider`
+- Removed RainbowKit entirely:
+  - Removed `@rainbow-me/rainbowkit` dependency
+  - Removed RainbowKit CSS import
+  - Replaced `<ConnectButton />` with a minimal connect/disconnect button using wagmi hooks
 
-- Fixed Next build blockers and TS strictness issues (not exhaustive):
-  - Guarded `usePublicClient()` returning possibly undefined in a few places.
-  - Updated viem contract instantiation to v2 API: `getContract({ client })`.
-  - Adjusted custom chain typing (`rollux`) to `viem/chains` `Chain` type.
-  - Updated transaction receipt hook usage and event decoding typing.
-  - Added a webpack alias stub for a MetaMask SDK dependency to avoid bundling failure.
+- Updated provider wiring for wagmi v3:
+  - `WagmiConfig` → `WagmiProvider`
+  - `createConfig({ transports })` with `viem` `http(...)`
 
-## Key files touched (high signal)
+## Files currently changed (not committed yet)
 
+- `package.json`
+- `package-lock.json` (now synced to wagmi v3 / viem v2)
+- `src/app/layout.tsx`
 - `src/app/providers.tsx`
-  - Wagmi config + `QueryClientProvider` + `RainbowKitProvider` integration.
-  - Uses injected connector only (no WalletConnect projectId required).
+- `src/components/Wrapper.tsx`
 
-- `src/hooks/useLoadContract.ts`
-  - viem v2 `getContract` signature updated.
+## Notes (wagmi v2 → v3)
 
-- `src/app/connectContract/page.tsx`
-  - Additional null-guards around public client chainId.
+- wagmi v3 makes connector dependencies optional peer deps.
+  - This app uses the injected connector only (`injected()`), so no extra connector packages are required.
 
-## Why we are not on wagmi v3 yet
+## Remaining work
 
-RainbowKit is the blocker.
+- Decide whether we need WalletConnect (requires a projectId + connector dependency) or injected-only is sufficient.
+- If this work is ready, commit the above changed files.
 
-- `@rainbow-me/rainbowkit@2.2.10` peers `wagmi` at `^2.9.0`.
-- To use wagmi v3, we must remove/replace RainbowKit (or find a RainbowKit release that supports wagmi v3).
+---
 
-## Remaining work: switch to wagmi v3 (remove RainbowKit)
-
-This is the recommended sequence to avoid thrash.
-
-### Phase 1 — branch + dependency bump
-
-1. Create a branch off current `main`.
-   - Suggested: `feat/wagmi-v3-no-rainbowkit`
-
-2. Remove RainbowKit from dependencies.
-   - Remove `@rainbow-me/rainbowkit` from `package.json`.
-   - Remove any RainbowKit CSS import (if present).
-
-3. Upgrade wagmi.
-   - Set `wagmi` to `^3.x`.
-   - Align `viem` version to what wagmi v3 expects.
-   - Keep `@tanstack/react-query` (wagmi uses it).
-
-Validation gate: `npm test` and `npm run build`.
-
-### Phase 2 — replace RainbowKit UI with minimal in-app wallet UX
-
-RainbowKit provided wallet UX (connect button/modals/recent tx UI). When removed:
-
-1. Create a minimal wallet component (MUI-based) that:
-   - Lists available connectors (`useConnect()`)
-   - Connects/disconnects (`useConnect()`, `useDisconnect()`)
-   - Displays address + status (`useAccount()`)
-   - Optionally switches chains (`useSwitchChain()`)
-
-2. Replace any RainbowKit component usage if it exists in the current app.
-   - Look for: `ConnectButton`, `useConnectModal`, `useAccountModal`, `useChainModal`.
-   - In this codebase, RainbowKit usage is currently centralized in providers; still do a search when doing the actual branch work.
-
-Validation gate: manual smoke test in `npm run dev`.
-
-### Phase 3 — wagmi v2 → v3 API updates
-
-When bumping to wagmi v3, expect these categories of changes:
-
-- Provider layer changes:
-  - `WagmiConfig` replaced by wagmi v3 provider API.
-  - config creation may require small updates depending on the chosen connectors/transports.
-
-- Hook/API changes:
-  - Some hook names/signatures changed between v2 and v3.
-  - `usePublicClient()` and friends remain but may have stricter typing.
-
-- Connector changes:
-  - If using WalletConnect in v3, it will require a projectId and a proper connector setup.
-  - If staying injected-only (MetaMask/etc.), it can remain minimal.
-
-Validation gate: `npm run build` must succeed without prerender errors.
-
-## Context for the next agent/session
-
-If you’re resuming this task later, capture/confirm:
-
-- The starting commit is `aa83b90`.
-- Confirm current working commands:
-  - `npm run build`
-  - `npm test`
-- The migration goal is wagmi v3, and it implies removing RainbowKit unless RainbowKit supports wagmi v3.
-- Decide upfront whether WalletConnect is required; if yes, you’ll need a `projectId` strategy and connector UX.
+# Proxy detection / POC work
 
 **Priority**: Low
 **Effort**: Medium

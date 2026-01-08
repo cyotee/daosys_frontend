@@ -1,6 +1,5 @@
 import { Wrapper } from "@/components/Wrapper"
 import { Providers } from "./providers"
-import '@rainbow-me/rainbowkit/styles.css';
 
 export const metadata = {
   title: 'Next.js',

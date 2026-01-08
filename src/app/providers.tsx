@@ -1,11 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import {
-    RainbowKitProvider,
-} from '@rainbow-me/rainbowkit';
 
-import { createConfig, WagmiConfig } from 'wagmi';
+import { createConfig, WagmiProvider } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -20,7 +17,6 @@ import { CssBaseline, ThemeProvider } from '@mui/material';
 import theme from './theme';
 import { NotificationProvider } from '@/components/Notifications';
 import { http } from 'viem';
-import { darkTheme } from '@rainbow-me/rainbowkit';
 
 // Define supported chains - wallet must be on one of these networks
 const chains = [
@@ -29,11 +25,6 @@ const chains = [
     mainnet,
     ...(process.env.NEXT_PUBLIC_ENABLE_TESTNETS === 'true' ? [goerli] : []),
 ] as const;
-
-// Map chain IDs to chain configs for lookup
-const demoAppInfo = {
-    appName: 'DaoSYS test UI',
-};
 
 const connectors = [injected()];
 
@@ -56,21 +47,16 @@ export function Providers({ children }: { children: React.ReactNode }) {
     React.useEffect(() => setMounted(true), []);
     return (
         <Provider store={store}>
-            <WagmiConfig config={wagmiConfig}>
+            <WagmiProvider config={wagmiConfig}>
                 <QueryClientProvider client={queryClient}>
                     <ThemeProvider theme={theme}>
                         <CssBaseline />
                         <NotificationProvider>
-                            <RainbowKitProvider
-                                appInfo={demoAppInfo}
-                                theme={darkTheme()}
-                            >
-                                {mounted && children}
-                            </RainbowKitProvider>
+                            {mounted && children}
                         </NotificationProvider>
                     </ThemeProvider>
                 </QueryClientProvider>
-            </WagmiConfig>
+            </WagmiProvider>
         </Provider>
     );
 }
